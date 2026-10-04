@@ -32,8 +32,6 @@ private fun DashboardPrincipalPreview() {
 fun DashboardPrincipal(
     onNavigateToAssignTask: () -> Unit,
     onGenerateReport: (String) -> Unit,
-    username: String = "",
-    password: String = "",
 ) {
     var selectedBlock by remember { mutableStateOf("B322") } // Bloque seleccionado por defecto
     var selectedSection by remember { mutableStateOf("Trabajos") }
@@ -138,7 +136,7 @@ fun DashboardPrincipal(
                     onNavigateToAssignTask()
                     scope.launch {
                         try {
-                            operarios = fetchOperarios(username, password)
+                            operarios = fetchOperarios()
                         } finally {
                             loadingOperarios = false
                         }

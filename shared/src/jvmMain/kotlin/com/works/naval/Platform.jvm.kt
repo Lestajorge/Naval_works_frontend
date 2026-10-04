@@ -5,3 +5,5 @@ class JVMPlatform: Platform {
 }
 
 actual fun getPlatform(): Platform = JVMPlatform()
+
+actual val apiBaseUrl: String = "http://localhost:8080"

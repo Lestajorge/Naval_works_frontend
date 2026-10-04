@@ -51,8 +51,6 @@ fun LoginScreenPreview() {
            DashboardPrincipal(
                onNavigateToAssignTask = {},
                onGenerateReport = {},
-               username = user,
-               password = password,
            )
         }
     } else {

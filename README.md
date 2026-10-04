@@ -51,14 +51,15 @@ También puedes abrir el proyecto en Android Studio y ejecutar la configuración
 
 ## Backend
 
-La aplicación espera un backend accesible en `http://localhost:8080` con estos endpoints:
+La aplicación espera el backend Spring Security del proyecto Naval_Works:
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
-| `POST` | `/api/auth/login` | Autenticar con `usuario` y `password`; la respuesta debe indicar `"correcto": true` |
-| `GET` | `/api/operarios` | Obtener operarios mediante autenticación HTTP Basic; se esperan los campos `nombre` y `apellidos` |
+| `GET` | `/login` | Obtener el formulario y el token CSRF de inicio de sesión |
+| `POST` | `/login` | Autenticar con `username`, `password` y el token CSRF; el backend inicia una sesión |
+| `GET` | `/api/operarios` | Obtener la lista de operarios usando la sesión iniciada |
 
-El host debe ser accesible desde el dispositivo o emulador donde se ejecute la aplicación. En un emulador Android, `localhost` apunta al propio emulador, no al equipo que ejecuta el backend; configura una dirección accesible para ese entorno si fuera necesario.
+El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.
 
 ## Pruebas
 
