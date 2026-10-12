@@ -69,7 +69,7 @@ suspend fun fetchOperarios(): List<String> {
     if (response.status.value != 200) {
         return emptyList()
     }
-// DEFINIMOS EL PATRON A BUSCAR EN EL RESPONSE RECIBIDO
+// DEFINIMOS EL PATRON A BUSCAR EN EL JASON RESPONSE RECIBIDO
     val body = response.bodyAsText()
     val operarioRegex = Regex(
         """\{[^{}]*"nombre"\s*:\s*"([^"]*)"[^{}]*"apellidos"\s*:\s*"([^"]*)"[^{}]*\}"""
@@ -79,6 +79,7 @@ suspend fun fetchOperarios(): List<String> {
     return operarioRegex.findAll(body).map { match ->
         "${match.groupValues[1]} ${match.groupValues[2]}"
     }.toList()
+
 }
 
 // CARGA LOS TRABAJOS Y LOS COMPLETA CON LOS DATOS DE SUS ISOMETRICOS Y BLOQUES
@@ -89,7 +90,11 @@ suspend fun fetchTrabajos(): List<TrabajoItem> {
         // se convierte en clave par-valor el id y el codigo de bloque
         bloque.requiredLong("id") to bloque.requiredString("codigoBloque")
     }
+
+
+
     // GUARDA LOS DATOS DE CADA ISOMETRICO Y BUSCA EL CODIGO DE SU BLOQUE
+    // Metodo associate de libreria estandar de Kotlin para cualquier coleccion
     val isometricos = fetchJsonArray("/api/isometricos").associate { element ->
         val isometrico = element.jsonObject
         val id = isometrico.requiredLong("id")
@@ -141,6 +146,7 @@ private suspend fun fetchJsonArray(path: String): JsonArray {
     check(response.status.value == 200) {
         "El servidor respondió ${response.status.value} al consultar $path"
     }
+
     return Json.parseToJsonElement(response.bodyAsText()).jsonArray
 }
 
