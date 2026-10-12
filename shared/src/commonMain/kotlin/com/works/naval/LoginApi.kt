@@ -1,16 +1,12 @@
 package com.works.naval
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
-import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BasicAuthCredentials
+import io.ktor.client.plugins.auth.providers.basic
 import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.forms.FormDataContent
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
-import io.ktor.http.Parameters
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -20,45 +16,36 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
+private var loginCredentials: BasicAuthCredentials? = null
+
 private val httpClient = HttpClient {
-    followRedirects = false
-    install(HttpCookies) {
-        storage = AcceptAllCookiesStorage()
+    install(Auth) {
+        basic {
+            credentials { loginCredentials }
+            sendWithoutRequest { true }
+        }
     }
 }
-private val csrfInputRegex =
-    Regex("""<input[^>]*name="([^"]+)"[^>]*value="([^"]+)"[^>]*>""", RegexOption.IGNORE_CASE)
 
-
-// OBTENEMOS EL TOKEN RECIBIDO
 suspend fun login(usuario: String, password: String): Boolean {
-    val loginPage = httpClient.get("$apiBaseUrl/login")
-    val csrfMatch = csrfInputRegex.find(loginPage.bodyAsText())
-        ?: error("El backend no devolvió el token CSRF del formulario de acceso")
-
-// INTRODUCIMOS LAS CREDENCIALES CON EL TOKEN RECIBIDO
-
-    val response = httpClient.post("$apiBaseUrl/login") {
-        setBody(
-            FormDataContent(
-                Parameters.build {
-                    append("username", usuario)
-                    append("password", password)
-                    append(csrfMatch.groupValues[1], csrfMatch.groupValues[2])
-                },
-            ),
-        )
+    loginCredentials = BasicAuthCredentials(usuario, password)
+    val response = try {
+        httpClient.get("$apiBaseUrl/api/bloques")
+    } catch (exception: Exception) {
+        loginCredentials = null
+        throw exception
     }
 
-    /* OBTENEMOS LA CABECERA Y EL ESTADO , SI ESTA ENTRE 300 Y 400 Y TERMINA LA URL EN
-    /DASHBOARD DEVOLVEREMOS TRUE
-    */
-    val redirect = response.headers[HttpHeaders.Location]
+    if (response.status.value == 401) {
+        loginCredentials = null
+        return false
+    }
 
-    return response.status.value in 300..399 &&
-       // Utilizamos ?. para evitar los NUllPointerException
-
-            redirect?.substringBefore('?')?.endsWith("/dashboard") == true
+    if (response.status.value != 200) {
+        loginCredentials = null
+        error("El servidor respondió ${response.status.value} al comprobar las credenciales")
+    }
+    return true
 }
 
 // FUNCION PARA BUSCAR OPERARIOS EN LA BASE DE DATOS AL PUSAR ASIGNAR NUEVO TRABAJO
