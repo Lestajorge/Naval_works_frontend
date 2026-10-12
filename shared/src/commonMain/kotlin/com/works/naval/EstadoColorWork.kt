@@ -19,10 +19,9 @@ internal data class EstadoColors(
 internal fun estadoColors(estado: EstadoTrabajo): EstadoColors =
     when (estado) {
         EstadoTrabajo.PENDIENTE -> EstadoColors(Color(0xFF9E9E9E), Color(0xFF212121))
-        EstadoTrabajo.EN_MONTAJE -> EstadoColors(Color(0xFFFFE0B2), Color(0xFFE65100))
-        EstadoTrabajo.MONTADO -> EstadoColors(Color(0xFFE1BEE7), Color(0xFF4A148C))
-        EstadoTrabajo.SOLDADO -> EstadoColors(Color(0xFFBBDEFB), Color(0xFF0D47A1))
-        EstadoTrabajo.REVISADO -> EstadoColors(Color(0xFFC8E6C9), Color(0xFF1B5E20))
+        EstadoTrabajo.EN_EJECUCION -> EstadoColors(Color(0xFFFFE0B2), Color(0xFFE65100))
+        EstadoTrabajo.REVISADO -> EstadoColors(Color(0xFFFFF9C4), Color(0xFFF57F17))
+        EstadoTrabajo.ACEPTADO -> EstadoColors(Color(0xFFC8E6C9), Color(0xFF1B5E20))
     }
 
 @Composable

@@ -6,17 +6,42 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 
 @Composable
 fun IsometricoDetalleVisor(
-    item: IsometricoItem,
+    item: TrabajoItem,
     onVolver: () -> Unit
 ) {
+    var pdfBytes by remember(item.isometricoId) { mutableStateOf<ByteArray?>(null) }
+    var isLoading by remember(item.isometricoId) { mutableStateOf(true) }
+    var errorMessage by remember(item.isometricoId) { mutableStateOf<String?>(null) }
+    var refreshKey by remember(item.isometricoId) { mutableStateOf(0) }
+
+    LaunchedEffect(item.isometricoId, refreshKey) {
+        isLoading = true
+        errorMessage = null
+        try {
+            pdfBytes = fetchIsometricoPdf(item.isometricoId)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            errorMessage = exception.message ?: "No se pudo cargar el PDF"
+        } finally {
+            isLoading = false
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -36,12 +61,12 @@ fun IsometricoDetalleVisor(
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text(
-                    text = item.id,
+                    text = item.codigoIsometrico,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Bloque ${item.bloque} • ${item.subsistema}",
+                    text = "Trabajo #${item.id} • Bloque ${item.bloque} • ${item.subsistema}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
@@ -57,10 +82,31 @@ fun IsometricoDetalleVisor(
                 .weight(1f),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
         ) {
-            PdfViewer(
-                pdfPath = item.pdfUrl,
-                modifier = Modifier.fillMaxSize(),
-            )
+            when {
+                isLoading -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+                errorMessage != null -> Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = errorMessage.orEmpty(),
+                        color = Color.White,
+                    )
+                    Button(onClick = { refreshKey++ }) {
+                        Text("Reintentar")
+                    }
+                }
+                else -> PdfViewer(
+                    pdfBytes = pdfBytes,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

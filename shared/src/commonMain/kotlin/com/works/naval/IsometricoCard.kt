@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun IsometricoCard(
-    item: IsometricoItem,
+    item: TrabajoItem,
     onClick: () -> Unit,
     onEstadoChange: (EstadoTrabajo) -> Unit
 ) {
@@ -40,13 +40,13 @@ fun IsometricoCard(
         ) {
             Column {
                 Text(
-                    text = item.id,
+                    text = item.codigoIsometrico,
                     style = MaterialTheme.typography.titleMedium,
                     color = colors.content,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Bloque: ${item.bloque} • Sistema: ${item.subsistema}",
+                    text = "Trabajo #${item.id} • Bloque: ${item.bloque} • Sistema: ${item.subsistema}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.content.copy(alpha = 0.8f),
                 )

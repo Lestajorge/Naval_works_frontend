@@ -13,33 +13,32 @@ import java.io.IOException
 import javax.swing.JPanel
 
 @Composable
-actual fun PdfViewer(pdfPath: String, modifier: Modifier) {
+actual fun PdfViewer(pdfBytes: ByteArray?, modifier: Modifier) {
+    val panel = androidx.compose.runtime.remember { PdfPanel() }
     SwingPanel(
-        factory = { PdfPanel(pdfPath) },
+        factory = { panel },
         modifier = modifier,
+        update = { it.loadPdf(pdfBytes) },
     )
 }
 
-private class PdfPanel(
-    private val pdfPath: String,
-) : JPanel() {
+private class PdfPanel : JPanel() {
     private var pageImage: java.awt.image.BufferedImage? = null
     private var errorMessage: String? = null
+    private var loadedBytes: ByteArray? = null
 
     init {
         background = Color.DARK_GRAY
-        loadFirstPage()
     }
 
-    private fun loadFirstPage() {
+    fun loadPdf(bytes: ByteArray?) {
+        if (bytes == null || bytes === loadedBytes) return
+        loadedBytes = bytes
+        pageImage = null
+        errorMessage = null
         try {
-            val resource = javaClass.classLoader.getResourceAsStream(pdfPath)
-                ?: throw IOException("No se encontró el recurso PDF: $pdfPath")
-
-            resource.use { input ->
-                Loader.loadPDF(input.readBytes()).use { document ->
-                    pageImage = PDFRenderer(document).renderImageWithDPI(0, 120f)
-                }
+            Loader.loadPDF(bytes).use { document ->
+                pageImage = PDFRenderer(document).renderImageWithDPI(0, 120f)
             }
         } catch (exception: IOException) {
             errorMessage = exception.message ?: "No se pudo cargar el PDF"

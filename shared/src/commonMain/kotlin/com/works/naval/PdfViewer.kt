@@ -5,6 +5,6 @@ import androidx.compose.ui.Modifier
 
 @Composable
 expect fun PdfViewer(
-    pdfPath: String,
+    pdfBytes: ByteArray?,
     modifier: Modifier = Modifier,
 )

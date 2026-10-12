@@ -8,7 +8,6 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.view.View
-import com.works.naval.shared.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
@@ -18,7 +17,7 @@ import java.io.File
 import java.io.IOException
 
 @Composable
-actual fun PdfViewer(pdfPath: String, modifier: Modifier) {
+actual fun PdfViewer(pdfBytes: ByteArray?, modifier: Modifier) {
     val context = LocalContext.current
     val view = androidx.compose.runtime.remember { PdfDocumentView(context) }
 
@@ -29,7 +28,7 @@ actual fun PdfViewer(pdfPath: String, modifier: Modifier) {
     AndroidView(
         factory = { view },
         modifier = modifier,
-        update = { it.loadPdf(pdfPath) },
+        update = { it.loadPdf(pdfBytes) },
     )
 }
 
@@ -38,7 +37,8 @@ private class PdfDocumentView(
 ) : View(context) {
     private var renderer: PdfRenderer? = null
     private var pageBitmap: Bitmap? = null
-    private var loadedPath: String? = null
+    private var loadedBytes: ByteArray? = null
+    private var cachedPdfFile: File? = null
     private var errorMessage: String? = null
     private val errorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -46,18 +46,17 @@ private class PdfDocumentView(
         textAlign = Paint.Align.CENTER
     }
 
-    fun loadPdf(path: String) {
-        if (path == loadedPath) return
-        loadedPath = path
+    fun loadPdf(bytes: ByteArray?) {
+        if (bytes == null || bytes === loadedBytes) return
+        loadedBytes = bytes
         closeDocument()
+        cachedPdfFile?.delete()
+        cachedPdfFile = null
 
         try {
-            val file = File(context.cacheDir, path.substringAfterLast('/'))
-            if (!file.exists()) {
-                context.resources.openRawResource(R.raw.sample_plan).use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
+            val file = File.createTempFile("naval-isometrico-", ".pdf", context.cacheDir)
+            file.writeBytes(bytes)
+            cachedPdfFile = file
 
             renderer = PdfRenderer(
                 ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY),
@@ -115,6 +114,8 @@ private class PdfDocumentView(
         closeDocument()
         pageBitmap?.recycle()
         pageBitmap = null
+        cachedPdfFile?.delete()
+        cachedPdfFile = null
     }
 
     private fun closeDocument() {

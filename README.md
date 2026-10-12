@@ -10,7 +10,7 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 - Consulta de operarios y flujo para asignar trabajos.
 - Visualización de documentos PDF e isométricos.
 
-> Algunas pantallas y datos del panel son actualmente demostrativos. La autenticación y la consulta de operarios requieren el backend descrito más abajo.
+> Algunas pantallas y datos del panel son actualmente demostrativos. La autenticación y las consultas de trabajos y operarios requieren el backend descrito más abajo.
 
 ## Tecnologías
 
@@ -58,6 +58,10 @@ La aplicación espera el backend Spring Security del proyecto Naval_Works:
 | `GET` | `/login` | Obtener el formulario y el token CSRF de inicio de sesión |
 | `POST` | `/login` | Autenticar con `username`, `password` y el token CSRF; el backend inicia una sesión |
 | `GET` | `/api/operarios` | Obtener la lista de operarios usando la sesión iniciada |
+| `GET` | `/api/trabajos` | Obtener los trabajos registrados |
+| `GET` | `/api/isometricos` | Obtener los isométricos asociados a los trabajos |
+| `GET` | `/api/bloques` | Obtener los bloques de los isométricos |
+| `GET` | `/api/isometricos/{id}/pdf` | Descargar el PDF del isométrico |
 
 El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.
 

@@ -13,15 +13,15 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun TrabajosSection(
-    listaIsometricos: List<IsometricoItem>,
-    onSelectIsometrico: (IsometricoItem) -> Unit,
-    onEstadoChange: (String, EstadoTrabajo) -> Unit,
+    listaTrabajos: List<TrabajoItem>,
+    onSelectTrabajo: (TrabajoItem) -> Unit,
+    onEstadoChange: (Long, EstadoTrabajo) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
     // Filtrado en tiempo real por ID de isométrico o por Bloque (ej: B322)
-    val isometricosFiltrados = listaIsometricos.filter {
-        it.id.contains(searchQuery, ignoreCase = true) ||
+    val trabajosFiltrados = listaTrabajos.filter {
+        it.codigoIsometrico.contains(searchQuery, ignoreCase = true) ||
                 it.bloque.contains(searchQuery, ignoreCase = true)
     }
 
@@ -42,15 +42,28 @@ fun TrabajosSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Listado dinámico
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(isometricosFiltrados) { item ->
+            if (trabajosFiltrados.isEmpty()) {
+                item {
+                    Text(
+                        text = if (listaTrabajos.isEmpty()) {
+                            "No hay trabajos registrados."
+                        } else {
+                            "No se encontraron trabajos."
+                        },
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+            }
+            items(trabajosFiltrados) { trabajo ->
                 IsometricoCard(
-                    item = item,
-                    onClick = { onSelectIsometrico(item) },
-                    onEstadoChange = { nuevoEstado -> onEstadoChange(item.id, nuevoEstado) },
+                    item = trabajo,
+                    onClick = { onSelectTrabajo(trabajo) },
+                    onEstadoChange = { nuevoEstado ->
+                        onEstadoChange(trabajo.id, nuevoEstado)
+                    },
                 )
             }
         }
