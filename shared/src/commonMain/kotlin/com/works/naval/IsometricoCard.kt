@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -19,7 +20,11 @@ import androidx.compose.ui.unit.dp
 fun IsometricoCard(
     item: TrabajoItem,
     onClick: () -> Unit,
-    onEstadoChange: (EstadoTrabajo) -> Unit
+    isUpdating: Boolean,
+    isSaving: Boolean,
+    isAddingOperarios: Boolean,
+    onEstadoChange: (EstadoTrabajo) -> Unit,
+    onAddOperarios: () -> Unit,
 ) {
     val colors = estadoColors(item.estado)
     var estadoMenuExpanded by remember { mutableStateOf(false) }
@@ -46,7 +51,10 @@ fun IsometricoCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Trabajo #${item.id} • Bloque: ${item.bloque} • Sistema: ${item.subsistema}",
+                    text = uiText(
+                        "Trabajo #${item.id} • Bloque: ${item.bloque} • Sistema: ${item.subsistema}",
+                        "Traballo #${item.id} • Bloque: ${item.bloque} • Sistema: ${item.subsistema}",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.content.copy(alpha = 0.8f),
                 )
@@ -57,23 +65,55 @@ fun IsometricoCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 EstadoColorWork(estado = item.estado)
-                Box {
-                    Button(onClick = { estadoMenuExpanded = true }) {
-                        Text("Cambiar Estado")
-                    }
-                    DropdownMenu(
-                        expanded = estadoMenuExpanded,
-                        onDismissRequest = { estadoMenuExpanded = false }
-                    ) {
-                        EstadoTrabajo.values().forEach { estado ->
-                            DropdownMenuItem(
-                                text = { Text(estado.descripcion) },
-                                onClick = {
-                                    onEstadoChange(estado)
-                                    estadoMenuExpanded = false
-                                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        Button(
+                            onClick = { estadoMenuExpanded = true },
+                            enabled = !isUpdating,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF134386),
+                                contentColor = Color.White,
+                            ),
+                        ) {
+                            Text(
+                                if (isSaving) uiText("Guardando...", "Gardando...")
+                                else uiText("Cambiar estado", "Cambiar estado"),
                             )
                         }
+                        DropdownMenu(
+                            expanded = estadoMenuExpanded,
+                            onDismissRequest = { estadoMenuExpanded = false }
+                        ) {
+                            EstadoTrabajo.values().forEach { estado ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (LocalUiLanguage.current == UiLanguage.GALICIAN) {
+                                                estado.descripcionGallega
+                                            } else {
+                                                estado.descripcion
+                                            },
+                                        )
+                                    },
+                                    onClick = {
+                                        onEstadoChange(estado)
+                                        estadoMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onAddOperarios,
+                        enabled = !isUpdating && !isAddingOperarios,
+                    ) {
+                        Text(
+                            if (isAddingOperarios) uiText("Guardando...", "Gardando...")
+                            else uiText("Añadir operarios", "Engadir operarios"),
+                        )
                     }
                 }
             }

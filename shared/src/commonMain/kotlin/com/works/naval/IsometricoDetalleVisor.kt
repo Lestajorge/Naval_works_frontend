@@ -27,6 +27,7 @@ fun IsometricoDetalleVisor(
     var isLoading by remember(item.isometricoId) { mutableStateOf(true) }
     var errorMessage by remember(item.isometricoId) { mutableStateOf<String?>(null) }
     var refreshKey by remember(item.isometricoId) { mutableStateOf(0) }
+    val language = LocalUiLanguage.current
 
     LaunchedEffect(item.isometricoId, refreshKey) {
         isLoading = true
@@ -36,7 +37,10 @@ fun IsometricoDetalleVisor(
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            errorMessage = exception.message ?: "No se pudo cargar el PDF"
+            errorMessage = exception.message ?: language.text(
+                "No se pudo cargar el PDF",
+                "Non se puido cargar o PDF",
+            )
         } finally {
             isLoading = false
         }
@@ -55,7 +59,7 @@ fun IsometricoDetalleVisor(
             IconButton(onClick = onVolver) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver a la lista"
+                    contentDescription = uiText("Volver a la lista", "Volver á lista")
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -66,7 +70,10 @@ fun IsometricoDetalleVisor(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Trabajo #${item.id} • Bloque ${item.bloque} • ${item.subsistema}",
+                    text = uiText(
+                        "Trabajo #${item.id} • Bloque ${item.bloque} • ${item.subsistema}",
+                        "Traballo #${item.id} • Bloque ${item.bloque} • ${item.subsistema}",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
@@ -75,7 +82,6 @@ fun IsometricoDetalleVisor(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Visor PDF del plano seleccionado
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -99,7 +105,7 @@ fun IsometricoDetalleVisor(
                         color = Color.White,
                     )
                     Button(onClick = { refreshKey++ }) {
-                        Text("Reintentar")
+                        Text(uiText("Reintentar", "Tentar de novo"))
                     }
                 }
                 else -> PdfViewer(
@@ -116,7 +122,7 @@ fun IsometricoDetalleVisor(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Estado actual:", fontWeight = FontWeight.Bold)
+            Text(uiText("Estado actual:", "Estado actual:"), fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.width(8.dp))
             EstadoColorWork(estado = item.estado)
         }

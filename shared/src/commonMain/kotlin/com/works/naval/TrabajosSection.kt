@@ -16,13 +16,22 @@ fun TrabajosSection(
     listaTrabajos: List<TrabajoItem>,
     onSelectTrabajo: (TrabajoItem) -> Unit,
     onEstadoChange: (Long, EstadoTrabajo) -> Unit,
+    estadoUpdateError: String?,
+    isUpdatingEstado: Boolean,
+    updatingTrabajoId: Long?,
+    isAddingOperarios: Boolean,
+    addingOperariosTrabajoId: Long?,
+    onAddOperarios: (TrabajoItem) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    // Filtrado en tiempo real por ID de isométrico o por Bloque (ej: B322)
+    val query = searchQuery.trim()
     val trabajosFiltrados = listaTrabajos.filter {
-        it.codigoIsometrico.contains(searchQuery, ignoreCase = true) ||
-                it.bloque.contains(searchQuery, ignoreCase = true)
+        it.codigoIsometrico.contains(query, ignoreCase = true) ||
+            it.bloque.contains(query, ignoreCase = true) ||
+            it.estado.descripcion.contains(query, ignoreCase = true) ||
+            it.estado.descripcionGallega.contains(query, ignoreCase = true) ||
+            it.estado.name.replace('_', ' ').contains(query, ignoreCase = true)
     }
 
     Column(
@@ -34,13 +43,21 @@ fun TrabajosSection(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Buscar por bloque o ID (ej. B322)...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+            label = { Text(uiText("Buscar por bloque, ID o estado...", "Buscar por bloque, ID ou estado...")) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = uiText("Buscar", "Buscar")) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        estadoUpdateError?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -49,9 +66,9 @@ fun TrabajosSection(
                 item {
                     Text(
                         text = if (listaTrabajos.isEmpty()) {
-                            "No hay trabajos registrados."
+                            uiText("No hay trabajos registrados.", "Non hai traballos rexistrados.")
                         } else {
-                            "No se encontraron trabajos."
+                            uiText("No se encontraron trabajos.", "Non se atoparon traballos.")
                         },
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
@@ -61,9 +78,14 @@ fun TrabajosSection(
                 IsometricoCard(
                     item = trabajo,
                     onClick = { onSelectTrabajo(trabajo) },
+                    isUpdating = isUpdatingEstado || isAddingOperarios,
+                    isSaving = trabajo.id == updatingTrabajoId,
+                    isAddingOperarios =
+                        isAddingOperarios && trabajo.id == addingOperariosTrabajoId,
                     onEstadoChange = { nuevoEstado ->
                         onEstadoChange(trabajo.id, nuevoEstado)
                     },
+                    onAddOperarios = { onAddOperarios(trabajo) },
                 )
             }
         }

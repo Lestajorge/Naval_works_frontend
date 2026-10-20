@@ -49,7 +49,6 @@ fun LoginScreenPreview() {
     if (loggedIn) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
            DashboardPrincipal(
-               onNavigateToAssignTask = {},
                onGenerateReport = {},
            )
         }

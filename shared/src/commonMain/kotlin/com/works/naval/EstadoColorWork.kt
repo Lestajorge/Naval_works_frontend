@@ -20,20 +20,25 @@ internal fun estadoColors(estado: EstadoTrabajo): EstadoColors =
     when (estado) {
         EstadoTrabajo.PENDIENTE -> EstadoColors(Color(0xFF9E9E9E), Color(0xFF212121))
         EstadoTrabajo.EN_EJECUCION -> EstadoColors(Color(0xFFFFE0B2), Color(0xFFE65100))
-        EstadoTrabajo.REVISADO -> EstadoColors(Color(0xFFFFF9C4), Color(0xFFF57F17))
+        EstadoTrabajo.REVISADO -> EstadoColors(Color(0xFFBBDEFB), Color(0xFF0D47A1))
         EstadoTrabajo.ACEPTADO -> EstadoColors(Color(0xFFC8E6C9), Color(0xFF1B5E20))
     }
 
 @Composable
 fun EstadoColorWork(estado: EstadoTrabajo) {
     val colors = estadoColors(estado)
+    val description = if (LocalUiLanguage.current == UiLanguage.GALICIAN) {
+        estado.descripcionGallega
+    } else {
+        estado.descripcion
+    }
 
     Surface(
         color = colors.background,
         shape = RoundedCornerShape(12.dp)
     ) {
         Text(
-            text = estado.descripcion,
+            text = description,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
             color = colors.content,

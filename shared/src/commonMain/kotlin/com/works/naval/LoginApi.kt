@@ -5,16 +5,25 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BasicAuthCredentials
 import io.ktor.client.plugins.auth.providers.basic
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 private var loginCredentials: BasicAuthCredentials? = null
 
@@ -48,25 +57,50 @@ suspend fun login(usuario: String, password: String): Boolean {
     return true
 }
 
-// FUNCION PARA BUSCAR OPERARIOS EN LA BASE DE DATOS AL PUSAR ASIGNAR NUEVO TRABAJO
-suspend fun fetchOperarios(): List<String> {
-    val response = httpClient.get("$apiBaseUrl/api/operarios")
-
-    //SI EL RESPONSE NO ES OK , DEVOLVEMOS LISTA VACIA
-    if (response.status.value != 200) {
-        return emptyList()
+suspend fun fetchOperarios(): List<OperarioOption> =
+    fetchJsonArray("/api/operarios").map { element ->
+        val operario = element.jsonObject
+        OperarioOption(
+            id = operario.requiredLong("id"),
+            nombre = operario.requiredString("nombre"),
+            apellidos = operario.requiredString("apellidos"),
+            especialista = operario.requiredString("especialista"),
+        )
     }
-// DEFINIMOS EL PATRON A BUSCAR EN EL JASON RESPONSE RECIBIDO
-    val body = response.bodyAsText()
-    val operarioRegex = Regex(
-        """\{[^{}]*"nombre"\s*:\s*"([^"]*)"[^{}]*"apellidos"\s*:\s*"([^"]*)"[^{}]*\}"""
-    )
 
-    //BUSCAMOS  Y AGRUPAMOS POR NOMBRE Y APELLIDOS Y DEVOLVEMOS UNA LISTA
-    return operarioRegex.findAll(body).map { match ->
-        "${match.groupValues[1]} ${match.groupValues[2]}"
-    }.toList()
+suspend fun fetchIsometricos(): List<IsometricoOption> =
+    fetchJsonArray("/api/isometricos").map { element ->
+        val isometrico = element.jsonObject
+        IsometricoOption(
+            id = isometrico.requiredLong("id"),
+            codigo = isometrico.requiredString("codigoIsometrico"),
+            bloqueId = isometrico.requiredLong("bloqueId"),
+        )
+    }
 
+suspend fun createTrabajo(isometricoId: Long, operarioIds: Set<Long>) {
+    val requestBody = buildJsonObject {
+        put("estado", JsonPrimitive(EstadoTrabajo.PENDIENTE.name))
+        put("isometricoId", JsonPrimitive(isometricoId))
+        put(
+            "operarioIds",
+            buildJsonArray {
+                operarioIds.forEach { add(JsonPrimitive(it)) }
+            },
+        )
+    }
+    val response = httpClient.post("$apiBaseUrl/api/trabajos") {
+        contentType(ContentType.Application.Json)
+        setBody(requestBody.toString())
+    }
+
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al crear el trabajo" +
+                if (details.isBlank()) "" else ": $details"
+        )
+    }
 }
 
 // CARGA LOS TRABAJOS Y LOS COMPLETA CON LOS DATOS DE SUS ISOMETRICOS Y BLOQUES
@@ -109,10 +143,46 @@ suspend fun fetchTrabajos(): List<TrabajoItem> {
             subsistema = isometrico.lineaTuberia,
             estado = EstadoTrabajo.values().firstOrNull { it.name == estado }
                 ?: error("Estado de trabajo no reconocido: $estado"),
+            operarioIds = trabajo.requiredLongList("operarioIds"),
         )
     }
 }
 
+// Guarda el nuevo estado conservando el resto de datos que requiere el PUT del backend.
+suspend fun updateTrabajoEstado(trabajo: TrabajoItem, nuevoEstado: EstadoTrabajo) {
+    updateTrabajo(trabajo.copy(estado = nuevoEstado))
+}
+
+suspend fun addOperariosToTrabajo(trabajo: TrabajoItem, nuevosOperarioIds: Set<Long>) {
+    updateTrabajo(
+        trabajo.copy(operarioIds = (trabajo.operarioIds + nuevosOperarioIds).distinct()),
+    )
+}
+
+private suspend fun updateTrabajo(trabajo: TrabajoItem) {
+    val requestBody = buildJsonObject {
+        put("estado", trabajo.estado.name)
+        put("isometricoId", JsonPrimitive(trabajo.isometricoId))
+        put(
+            "operarioIds",
+            buildJsonArray {
+                trabajo.operarioIds.forEach { add(JsonPrimitive(it)) }
+            },
+        )
+    }
+    val response = httpClient.put("$apiBaseUrl/api/trabajos/${trabajo.id}") {
+        contentType(ContentType.Application.Json)
+        setBody(requestBody.toString())
+    }
+
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al actualizar el trabajo " +
+                "${trabajo.id}${if (details.isBlank()) "" else ": $details"}"
+        )
+    }
+}
 
 
 // DESCARGA EL ISOMETRICO DEL PDF BUSCADO
@@ -130,11 +200,16 @@ suspend fun fetchIsometricoPdf(isometricoId: Long): ByteArray {
 // SOLICITA UNA RUTA Y DEVUELVE SU RESPUESTA COMO UNA LISTA JSON
 private suspend fun fetchJsonArray(path: String): JsonArray {
     val response = httpClient.get("$apiBaseUrl$path")
-    check(response.status.value == 200) {
-        "El servidor respondió ${response.status.value} al consultar $path"
+    val body = response.bodyAsText()
+    if (response.status.value != 200) {
+        val details = body.take(500)
+        error(
+            "El servidor respondió ${response.status.value} al consultar $path" +
+                if (details.isBlank()) "" else ": $details"
+        )
     }
 
-    return Json.parseToJsonElement(response.bodyAsText()).jsonArray
+    return Json.parseToJsonElement(body).jsonArray
 }
 
 // LEE UN TEXTO DEL JSON
@@ -146,6 +221,12 @@ private fun JsonObject.requiredString(field: String): String =
 private fun JsonObject.requiredLong(field: String): Long =
     this[field]?.jsonPrimitive?.longOrNull
         ?: error("Falta el campo '$field' en la respuesta del servidor")
+
+private fun JsonObject.requiredLongList(field: String): List<Long> =
+    this[field]?.jsonArray?.map { element ->
+        element.jsonPrimitive.longOrNull
+            ?: error("Valor no válido en el campo '$field' de la respuesta del servidor")
+    } ?: error("Falta el campo '$field' en la respuesta del servidor")
 
 // GUARDA LOS DATOS DEL ISOMETRICO QUE NECESITA LA LISTA DE TRABAJOS
 private data class IsometricoData(

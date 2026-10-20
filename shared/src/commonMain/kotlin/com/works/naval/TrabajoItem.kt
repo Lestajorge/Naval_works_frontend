@@ -7,4 +7,5 @@ data class TrabajoItem(
     val bloque: String,
     val subsistema: String,
     val estado: EstadoTrabajo,
+    val operarioIds: List<Long> = emptyList(),
 )
