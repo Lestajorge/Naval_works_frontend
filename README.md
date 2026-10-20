@@ -5,12 +5,16 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 ## Funcionalidades
 
 - Inicio de sesión conectado a un servicio backend.
-- Panel de control con información de avance de trabajos de la fragata F-110.
-- Consulta de trabajos e incidencias activas.
-- Consulta de operarios y flujo para asignar trabajos.
-- Visualización de documentos PDF e isométricos.
+- Panel de control con indicadores de avance y navegación por trabajos, operarios e incidencias.
+- Selector de idioma en el engranaje de configuración: español o gallego.
+- Búsqueda de trabajos por bloque, código de isométrico o estado.
+- Cambio del estado de un trabajo y opción para añadirle operarios desde su tarjeta.
+- Al seleccionar un trabajo, el panel derecho muestra el PDF del isométrico y el panel izquierdo agrupa los operarios asignados en montaje/tuberos y soldadura/soldadores.
+- Botón **Asignar Nuevo Trabajo** para elegir un isométrico y uno o varios operarios.
+- Botón **Añadir nueva incidencia** para crear incidencias; se muestran en tarjetas que pueden eliminarse.
+- Visualización del logotipo de NavalWorks en la sección **Operarios en buque**.
 
-> Algunas pantallas y datos del panel son actualmente demostrativos. La autenticación y las consultas de trabajos y operarios requieren el backend descrito más abajo.
+> Los indicadores del panel y las incidencias son demostrativos. Las incidencias se crean y eliminan solo en memoria, por lo que no se conservan al cerrar la aplicación ni se sincronizan con el backend. Los trabajos y operarios sí utilizan los endpoints descritos más abajo.
 
 ## Tecnologías
 
@@ -51,19 +55,21 @@ También puedes abrir el proyecto en Android Studio y ejecutar la configuración
 
 ## Backend
 
-La aplicación espera el backend Spring Security del proyecto Naval_Works:
+La aplicación espera el backend Spring Security del proyecto Naval_Works. Las peticiones autenticadas usan autenticación HTTP Basic con las credenciales del inicio de sesión.
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
-| `GET` | `/login` | Obtener el formulario y el token CSRF de inicio de sesión |
-| `POST` | `/login` | Autenticar con `username`, `password` y el token CSRF; el backend inicia una sesión |
-| `GET` | `/api/operarios` | Obtener la lista de operarios usando la sesión iniciada |
-| `GET` | `/api/trabajos` | Obtener los trabajos registrados |
+| `GET` | `/api/bloques` | Comprobar las credenciales y resolver los bloques de los isométricos |
+| `GET` | `/api/operarios` | Obtener operarios; la interfaz usa `id`, `nombre`, `apellidos` y `especialista` |
+| `GET` | `/api/trabajos` | Obtener trabajos, con `estado`, `isometricoId` y `operarioIds` |
+| `POST` | `/api/trabajos` | Crear un trabajo con estado, isométrico y operarios |
+| `PUT` | `/api/trabajos/{id}` | Actualizar el estado o la lista de operarios de un trabajo |
 | `GET` | `/api/isometricos` | Obtener los isométricos asociados a los trabajos |
-| `GET` | `/api/bloques` | Obtener los bloques de los isométricos |
 | `GET` | `/api/isometricos/{id}/pdf` | Descargar el PDF del isométrico |
 
 El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.
+
+La API de incidencias aún no está conectada: las acciones de añadir y eliminar incidencias solo modifican la lista local de demostración.
 
 ## Pruebas
 
