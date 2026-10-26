@@ -8,4 +8,4 @@ class AndroidPlatform : Platform {
 
 actual fun getPlatform(): Platform = AndroidPlatform()
 
-actual val apiBaseUrl: String = "http://10.0.2.2:8080"
+actual val defaultApiBaseUrl: String = "http://10.0.2.2:8080"

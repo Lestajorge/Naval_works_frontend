@@ -15,3 +15,29 @@ data class IsometricoOption(
     val codigo: String,
     val bloqueId: Long,
 )
+
+data class BloqueOption(
+    val id: Long,
+    val codigo: String,
+    val zona: String,
+)
+
+enum class EstadoIsometrico {
+    BORRADOR,
+    PUBLICADO,
+    ARCHIVADO,
+}
+
+data class IsometricoAdministrado(
+    val id: Long,
+    val codigo: String,
+    val bloqueId: Long,
+    val lineaTuberia: String,
+    val revision: String,
+    val estado: EstadoIsometrico,
+)
+
+data class PdfFileSelection(
+    val fileName: String,
+    val bytes: ByteArray,
+)

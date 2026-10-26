@@ -8,6 +8,6 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "NavalWorks_Frontend",
     ) {
-        App()
+        App(JvmAppPreferences())
     }
 }

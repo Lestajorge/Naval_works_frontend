@@ -5,4 +5,11 @@ interface Platform {
 }
 
 expect fun getPlatform(): Platform
-expect val apiBaseUrl: String
+expect val defaultApiBaseUrl: String
+
+var apiBaseUrl: String = defaultApiBaseUrl
+    private set
+
+fun configureApiBaseUrl(url: String) {
+    apiBaseUrl = url.trim().trimEnd('/')
+}

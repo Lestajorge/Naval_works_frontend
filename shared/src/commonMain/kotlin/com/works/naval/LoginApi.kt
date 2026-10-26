@@ -5,12 +5,18 @@ import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BasicAuthCredentials
 import io.ktor.client.plugins.auth.providers.basic
 import io.ktor.client.request.get
+import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -26,6 +32,7 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 private var loginCredentials: BasicAuthCredentials? = null
+private var regularLoginCredentials: BasicAuthCredentials? = null
 
 private val httpClient = HttpClient {
     install(Auth) {
@@ -35,26 +42,63 @@ private val httpClient = HttpClient {
         }
     }
 }
+private val adminAuthHttpClient = HttpClient()
 
 suspend fun login(usuario: String, password: String): Boolean {
-    loginCredentials = BasicAuthCredentials(usuario, password)
+    val credentials = BasicAuthCredentials(usuario, password)
+    regularLoginCredentials = credentials
+    loginCredentials = credentials
     val response = try {
         httpClient.get("$apiBaseUrl/api/bloques")
     } catch (exception: Exception) {
         loginCredentials = null
+        regularLoginCredentials = null
         throw exception
     }
 
     if (response.status.value == 401) {
         loginCredentials = null
+        regularLoginCredentials = null
         return false
     }
 
     if (response.status.value != 200) {
         loginCredentials = null
+        regularLoginCredentials = null
         error("El servidor respondió ${response.status.value} al comprobar las credenciales")
     }
     return true
+}
+
+suspend fun loginAdministrador(usuario: String, password: String): String? {
+    val requestBody = buildJsonObject {
+        put("usuario", usuario)
+        put("password", password)
+    }
+    val response = adminAuthHttpClient.post("$apiBaseUrl/api/auth/admin") {
+        contentType(ContentType.Application.Json)
+        setBody(requestBody.toString())
+    }
+
+    if (response.status.value == 401 || response.status.value == 403) return null
+    if (response.status.value != 200) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al validar el administrador" +
+                if (details.isBlank()) "" else ": $details"
+        )
+    }
+
+    val administrator = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+    if (administrator.requiredString("rol") != "ADMINISTRADOR") {
+        error("El servidor no confirmó el rol de administrador")
+    }
+    loginCredentials = BasicAuthCredentials(usuario, password)
+    return administrator.requiredString("usuario")
+}
+
+fun logoutAdministrador() {
+    loginCredentials = regularLoginCredentials
 }
 
 suspend fun fetchOperarios(): List<OperarioOption> =
@@ -68,13 +112,135 @@ suspend fun fetchOperarios(): List<OperarioOption> =
         )
     }
 
+suspend fun createOperario(nombre: String, apellidos: String, especialista: String) {
+    val response = httpClient.post("$apiBaseUrl/api/operarios") {
+        contentType(ContentType.Application.Json)
+        setBody(operarioJson(nombre, apellidos, especialista).toString())
+    }
+
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al crear el operario" +
+                if (details.isBlank()) "" else ": $details"
+        )
+    }
+}
+
+suspend fun updateOperario(id: Long, nombre: String, apellidos: String, especialista: String) {
+    val response = httpClient.put("$apiBaseUrl/api/operarios/$id") {
+        contentType(ContentType.Application.Json)
+        setBody(operarioJson(nombre, apellidos, especialista).toString())
+    }
+
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al modificar el operario $id" +
+                if (details.isBlank()) "" else ": $details"
+        )
+    }
+}
+
+suspend fun deleteOperario(id: Long) {
+    val response = httpClient.delete("$apiBaseUrl/api/operarios/$id")
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al dar de baja el operario $id" +
+                if (details.isBlank()) "" else ": $details"
+        )
+    }
+}
+
+private fun operarioJson(nombre: String, apellidos: String, especialista: String) =
+    buildJsonObject {
+        put("nombre", nombre)
+        put("apellidos", apellidos)
+        put("especialista", especialista)
+    }
+
 suspend fun fetchIsometricos(): List<IsometricoOption> =
-    fetchJsonArray("/api/isometricos").map { element ->
+    fetchJsonArray("/api/isometricos")
+        .filter { element ->
+            val status = element.jsonObject["estado"]?.jsonPrimitive?.contentOrNull
+            status == null || status.equals(EstadoIsometrico.PUBLICADO.name, ignoreCase = true)
+        }
+        .map { element ->
         val isometrico = element.jsonObject
         IsometricoOption(
             id = isometrico.requiredLong("id"),
             codigo = isometrico.requiredString("codigoIsometrico"),
             bloqueId = isometrico.requiredLong("bloqueId"),
+        )
+    }
+
+suspend fun fetchIsometricosAdministracion(): List<IsometricoAdministrado> =
+    fetchJsonArray("/api/isometricos/admin").map { element ->
+        val isometrico = element.jsonObject
+        val estadoNombre = isometrico.requiredString("estado")
+        val estado = EstadoIsometrico.entries.firstOrNull {
+            it.name.equals(estadoNombre, ignoreCase = true)
+        }
+            ?: error("Estado de isométrico no reconocido: $estadoNombre")
+        IsometricoAdministrado(
+            id = isometrico.requiredLong("id"),
+            codigo = isometrico.requiredString("codigoIsometrico"),
+            bloqueId = isometrico.requiredLong("bloqueId"),
+            lineaTuberia = isometrico.requiredString("lineaTuberia"),
+            revision = isometrico.requiredString("revision"),
+            estado = estado,
+        )
+    }
+
+suspend fun createIsometricoDraft(
+    codigo: String,
+    bloqueId: Long,
+    lineaTuberia: String,
+    revision: String,
+    pdf: PdfFileSelection,
+) {
+    val safeFileName = pdf.fileName
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .map { if (it.isLetterOrDigit() || it in "._-") it else '_' }
+        .joinToString("")
+        .ifBlank { "isometrico.pdf" }
+    val response = httpClient.submitFormWithBinaryData(
+        url = "$apiBaseUrl/api/isometricos",
+        formData = formData {
+            append("codigoIsometrico", codigo)
+            append("bloqueId", bloqueId.toString())
+            append("lineaTuberia", lineaTuberia)
+            append("revision", revision)
+            append(
+                "pdf",
+                pdf.bytes,
+                Headers.build {
+                    append(HttpHeaders.ContentType, ContentType.Application.Pdf.toString())
+                    append(HttpHeaders.ContentDisposition, "filename=\"$safeFileName\"")
+                },
+            )
+        },
+    )
+    requireSuccessful(response, "crear el isométrico")
+}
+
+suspend fun updateIsometricoEstado(id: Long, estado: EstadoIsometrico) {
+    val response = httpClient.put("$apiBaseUrl/api/isometricos/$id/estado") {
+        contentType(ContentType.Application.Json)
+        setBody(buildJsonObject { put("estado", estado.name) }.toString())
+    }
+    requireSuccessful(response, "actualizar el estado del isométrico $id")
+}
+
+suspend fun fetchBloques(): List<BloqueOption> =
+    fetchJsonArray("/api/bloques").map { element ->
+        val bloque = element.jsonObject
+        BloqueOption(
+            id = bloque.requiredLong("id"),
+            codigo = bloque.requiredString("codigoBloque"),
+            zona = bloque.requiredString("zona"),
         )
     }
 
@@ -105,14 +271,7 @@ suspend fun createTrabajo(isometricoId: Long, operarioIds: Set<Long>) {
 
 // CARGA LOS TRABAJOS Y LOS COMPLETA CON LOS DATOS DE SUS ISOMETRICOS Y BLOQUES
 suspend fun fetchTrabajos(): List<TrabajoItem> {
-    // Relaciona cada bloque con su código.
-    val bloques = fetchJsonArray("/api/bloques").associate { element ->
-        val bloque = element.jsonObject
-        // se convierte en clave par-valor el id y el codigo de bloque
-        bloque.requiredLong("id") to bloque.requiredString("codigoBloque")
-    }
-
-
+    val bloques = fetchBloques().associateBy { it.id }
 
     // GUARDA LOS DATOS DE CADA ISOMETRICO Y BUSCA EL CODIGO DE SU BLOQUE
     // Metodo associate de libreria estandar de Kotlin para cualquier coleccion
@@ -121,7 +280,7 @@ suspend fun fetchTrabajos(): List<TrabajoItem> {
         val id = isometrico.requiredLong("id")
         id to IsometricoData(
             codigo = isometrico.requiredString("codigoIsometrico"),
-            bloque = bloques[isometrico.requiredLong("bloqueId")]
+            bloque = bloques[isometrico.requiredLong("bloqueId")]?.codigo
                 ?: error("No se encontró el bloque del isométrico $id"),
             lineaTuberia = isometrico.requiredString("lineaTuberia"),
         )
@@ -210,6 +369,16 @@ private suspend fun fetchJsonArray(path: String): JsonArray {
     }
 
     return Json.parseToJsonElement(body).jsonArray
+}
+
+private suspend fun requireSuccessful(response: HttpResponse, operation: String) {
+    if (response.status.value !in 200..299) {
+        val details = response.bodyAsText().take(500)
+        error(
+            "El servidor respondió ${response.status.value} al $operation" +
+                if (details.isBlank()) "" else ": $details",
+        )
+    }
 }
 
 // LEE UN TEXTO DEL JSON

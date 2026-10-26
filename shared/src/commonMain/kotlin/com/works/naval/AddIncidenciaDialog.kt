@@ -17,8 +17,9 @@ import androidx.compose.ui.Modifier
 @Composable
 fun AddIncidenciaDialog(
     onDismiss: () -> Unit,
-    onAdd: (String) -> Unit,
+    onAdd: (String, String) -> Unit,
 ) {
+    var nombre by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -26,6 +27,13 @@ fun AddIncidenciaDialog(
         title = { Text(uiText("Añadir nueva incidencia", "Engadir unha incidencia nova")) },
         text = {
             Column {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(uiText("Nombre", "Nome")) },
+                    singleLine = true,
+                )
                 Text(uiText("Describe la incidencia:", "Describe a incidencia:"))
                 OutlinedTextField(
                     value = descripcion,
@@ -39,8 +47,8 @@ fun AddIncidenciaDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onAdd(descripcion.trim()) },
-                enabled = descripcion.isNotBlank(),
+                onClick = { onAdd(nombre.trim(), descripcion.trim()) },
+                enabled = nombre.isNotBlank() && descripcion.isNotBlank(),
             ) {
                 Text(uiText("Añadir", "Engadir"))
             }

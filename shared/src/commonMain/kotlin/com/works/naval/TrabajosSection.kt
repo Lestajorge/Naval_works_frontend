@@ -37,7 +37,7 @@ fun TrabajosSection(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 8.dp, vertical = 16.dp)
     ) {
         // Buscador superior
         OutlinedTextField(
@@ -60,6 +60,7 @@ fun TrabajosSection(
         }
 
         LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (trabajosFiltrados.isEmpty()) {

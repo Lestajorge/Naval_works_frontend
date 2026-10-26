@@ -21,10 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+data class IncidenciaItem(
+    val nombre: String,
+    val descripcion: String,
+)
+
 @Composable
 fun IncidenciasScreen(
-    incidencias: List<String>,
-    onDeleteIncidencia: (String) -> Unit,
+    incidencias: List<IncidenciaItem>,
+    onDeleteIncidencia: (IncidenciaItem) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -65,32 +70,43 @@ fun IncidenciasScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = when (incidencia) {
+                            text = when (incidencia.descripcion) {
                                 "Retraso en la soldadura del bloque B322" ->
                                     uiText(
-                                        incidencia,
+                                        incidencia.descripcion,
                                         "Atraso na soldadura do bloque B322",
                                     )
                                 "Falta material para la instalación eléctrica" ->
                                     uiText(
-                                        incidencia,
+                                        incidencia.descripcion,
                                         "Falta material para a instalación eléctrica",
                                     )
                                 "Revisión pendiente del isométrico 2" ->
                                     uiText(
-                                        incidencia,
+                                        incidencia.descripcion,
                                         "Revisión pendente do isométrico 2",
                                     )
                                 "Incidencia de seguridad en el taller" ->
                                     uiText(
-                                        incidencia,
+                                        incidencia.descripcion,
                                         "Incidencia de seguridade no taller",
                                     )
-                                else -> incidencia
+                                else -> incidencia.descripcion
                             },
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
+                        if (incidencia.nombre.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = uiText(
+                                    "Nombre: ${incidencia.nombre}",
+                                    "Nome: ${incidencia.nombre}",
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                            )
+                        }
                     }
                     IconButton(
                         onClick = { onDeleteIncidencia(incidencia) },

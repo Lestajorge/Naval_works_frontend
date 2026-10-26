@@ -63,11 +63,12 @@ fun IsometricoDetalleVisor(
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.codigoIsometrico,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
                 )
                 Text(
                     text = uiText(
@@ -75,7 +76,8 @@ fun IsometricoDetalleVisor(
                         "Traballo #${item.id} • Bloque ${item.bloque} • ${item.subsistema}",
                     ),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    maxLines = 2,
                 )
             }
         }

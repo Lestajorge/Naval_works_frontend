@@ -8,18 +8,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,9 +44,10 @@ fun CrearTrabajoScreen(
 ) {
     var operarios by remember { mutableStateOf<List<OperarioOption>>(emptyList()) }
     var isometricos by remember { mutableStateOf<List<IsometricoOption>>(emptyList()) }
+    var bloques by remember { mutableStateOf<List<BloqueOption>>(emptyList()) }
     var selectedOperarioIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var selectedIsometricoId by remember { mutableStateOf<Long?>(null) }
-    var isometricoMenuExpanded by remember { mutableStateOf(false) }
+    var isometricoSearchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -61,8 +65,10 @@ fun CrearTrabajoScreen(
                     .thenBy { it.apellidos.lowercase() },
             )
             val fetchedIsometricos = fetchIsometricos()
+            val fetchedBloques = fetchBloques()
             operarios = fetchedOperarios
             isometricos = fetchedIsometricos
+            bloques = fetchedBloques
             selectedOperarioIds = selectedOperarioIds.intersect(fetchedOperarios.map { it.id }.toSet())
             if (selectedIsometricoId !in fetchedIsometricos.map { it.id }) {
                 selectedIsometricoId = fetchedIsometricos.firstOrNull()?.id
@@ -80,6 +86,22 @@ fun CrearTrabajoScreen(
     }
 
     val selectedIsometrico = isometricos.firstOrNull { it.id == selectedIsometricoId }
+    val filteredIsometricos = isometricos.filter { isometrico ->
+        val query = isometricoSearchQuery.trim()
+        query.isEmpty() ||
+            isometrico.id.toString().contains(query, ignoreCase = true) ||
+            isometrico.codigo.contains(query, ignoreCase = true) ||
+            isometrico.bloqueId.toString().contains(query, ignoreCase = true) ||
+            bloques.firstOrNull { it.id == isometrico.bloqueId }
+                ?.codigo
+                ?.contains(query, ignoreCase = true) == true
+    }
+
+    fun isometricoLabel(isometrico: IsometricoOption): String {
+        val bloque = bloques.firstOrNull { it.id == isometrico.bloqueId }?.codigo
+            ?: isometrico.bloqueId.toString()
+        return "${isometrico.codigo} · ID ${isometrico.id} · Bloque $bloque"
+    }
 
     Column(
         modifier = Modifier
@@ -91,7 +113,11 @@ fun CrearTrabajoScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(uiText("Asignar trabajo", "Asignar traballo"), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                uiText("Asignar trabajo", "Asignar traballo"),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.headlineSmall,
+            )
             OutlinedButton(onClick = onCancelar, enabled = !isSaving) {
                 Text(uiText("Cancelar", "Cancelar"))
             }
@@ -118,29 +144,68 @@ fun CrearTrabajoScreen(
             }
             else -> {
                 Text(uiText("Isométrico", "Isométrico"), style = MaterialTheme.typography.titleMedium)
-                Box {
-                    OutlinedButton(
-                        onClick = { isometricoMenuExpanded = true },
-                        enabled = isometricos.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            selectedIsometrico?.let { "${it.codigo} · Bloque ${it.bloqueId}" }
-                                ?: uiText("No hay isométricos disponibles", "Non hai isométricos dispoñibles"),
+                OutlinedTextField(
+                    value = isometricoSearchQuery,
+                    onValueChange = { isometricoSearchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(uiText("Buscar isométrico o bloque", "Buscar isométrico ou bloque"))
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = uiText("Buscar", "Buscar"),
                         )
-                    }
-                    DropdownMenu(
-                        expanded = isometricoMenuExpanded,
-                        onDismissRequest = { isometricoMenuExpanded = false },
-                    ) {
-                        isometricos.forEach { isometrico ->
-                            DropdownMenuItem(
-                                text = { Text("${isometrico.codigo} · Bloque ${isometrico.bloqueId}") },
-                                onClick = {
-                                    selectedIsometricoId = isometrico.id
-                                    isometricoMenuExpanded = false
-                                },
-                            )
+                    },
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                selectedIsometrico?.let { selected ->
+                    Text(
+                        text = uiText(
+                            "Seleccionado: ${isometricoLabel(selected)}",
+                            "Seleccionado: ${isometricoLabel(selected)}",
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (isometricoSearchQuery.isNotBlank()) {
+                    if (filteredIsometricos.isEmpty()) {
+                        Text(
+                            uiText(
+                                "No hay isométricos que coincidan.",
+                                "Non hai isométricos que coincidan.",
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 180.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            items(filteredIsometricos, key = { it.id }) { isometrico ->
+                                val isSelected = isometrico.id == selectedIsometricoId
+                                Card(
+                                    onClick = { selectedIsometricoId = isometrico.id },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        },
+                                    ),
+                                ) {
+                                    Text(
+                                        text = isometricoLabel(isometrico),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
