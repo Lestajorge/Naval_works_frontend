@@ -32,12 +32,17 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 ## Estructura del proyecto
 
 ```text
-androidApp/   Aplicación Android
-desktopApp/   Aplicación de escritorio (JVM)
-shared/       Interfaz y lógica compartidas
+androidApp/   Punto de entrada de Android
+desktopApp/   Punto de entrada de escritorio (JVM)
+shared/
+  core/       Funcionalidades base y localización
+  data/       Preferencias y comunicación con el backend
+  domain/     Modelos y estados del dominio
+  platform/   Implementaciones específicas y APIs expect/actual
+  presentation/ Pantallas, componentes y diálogos de Compose
 ```
 
-La lógica común está en `shared/src/commonMain`. El código específico de Android y escritorio se encuentra en `shared/src/androidMain` y `shared/src/jvmMain`, respectivamente.
+La lógica compartida está en `shared/src/commonMain`; sus implementaciones específicas de plataforma están en `shared/src/androidMain` y `shared/src/jvmMain`.
 
 Las preferencias de aplicación y conexión se guardan en SQLite: Android utiliza su base de datos privada de la aplicación y escritorio utiliza `~/.navalworks/preferences.db`.
 
@@ -77,8 +82,9 @@ La aplicación espera el backend Spring Security del proyecto Naval_Works. Las p
 | `PUT` | `/api/trabajos/{id}` | Actualizar el estado o la lista de operarios de un trabajo |
 | `GET` | `/api/isometricos` | Obtener los isométricos asociados a los trabajos |
 | `GET` | `/api/isometricos/{id}/pdf` | Descargar el PDF del isométrico |
-| `GET` | `/api/isometricos/admin` | Listar todos los isométricos con sistema, revisión y estado |
-| `POST` | `/api/isometricos` | Subir multipart: `codigoIsometrico`, `bloqueId`, `lineaTuberia`, `revision` y `pdf`; crea un borrador |
+| `GET` | `/api/isometricos/admin` | Listar todos los isométricos con su estado |
+| `POST` | `/api/isometricos` | Crear un borrador con JSON: `codigoIsometrico` y `bloqueId` |
+| `POST` | `/api/isometricos/{id}/pdf` | Subir el PDF del borrador como multipart en el campo `file` |
 | `PUT` | `/api/isometricos/{id}/estado` | Cambiar estado a `PUBLICADO` o `ARCHIVADO` con JSON `{"estado":"..."}` |
 
 El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.

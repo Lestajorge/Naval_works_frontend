@@ -1,5 +1,8 @@
 package com.works.naval
 
+import com.works.naval.core.localization.UiLanguage
+import com.works.naval.data.preferences.JvmAppPreferences
+import com.works.naval.data.preferences.ServerConnectionSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
