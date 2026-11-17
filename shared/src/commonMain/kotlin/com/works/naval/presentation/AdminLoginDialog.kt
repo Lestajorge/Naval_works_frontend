@@ -41,6 +41,7 @@ fun AdminLoginDialog(
     var usuario by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<AdminLoginError?>(null) }
+    var connectionErrorDetails by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -88,6 +89,16 @@ fun AdminLoginDialog(
                         modifier = Modifier.padding(top = 8.dp),
                         color = androidx.compose.material3.MaterialTheme.colorScheme.error,
                     )
+                    if (error == AdminLoginError.CONNECTION) {
+                        connectionErrorDetails?.let {
+                            Text(
+                                text = it,
+                                modifier = Modifier.padding(top = 4.dp),
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -98,6 +109,7 @@ fun AdminLoginDialog(
                     errorMessage = null
                     scope.launch {
                         try {
+                            connectionErrorDetails = null
                             val administrator = loginAdministrador(usuario.trim(), password)
                             if (administrator == null) {
                                 errorMessage = AdminLoginError.INVALID_CREDENTIALS
@@ -108,6 +120,7 @@ fun AdminLoginDialog(
                             throw exception
                         } catch (exception: Exception) {
                             errorMessage = AdminLoginError.CONNECTION
+                            connectionErrorDetails = exception.message?.take(500)
                         } finally {
                             isLoading = false
                         }

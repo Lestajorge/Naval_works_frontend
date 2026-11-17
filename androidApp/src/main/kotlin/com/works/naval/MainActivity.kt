@@ -1,6 +1,7 @@
 package com.works.naval
 
 import com.works.naval.data.preferences.AndroidAppPreferences
+import com.works.naval.platform.configureOfflineIsometricoPdfStorage
 import com.works.naval.presentation.App
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        configureOfflineIsometricoPdfStorage(applicationContext)
 
         setContent {
             App(AndroidAppPreferences(applicationContext))

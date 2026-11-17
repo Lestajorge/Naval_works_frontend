@@ -34,8 +34,12 @@ fun TrabajosScreen(
 ) {
     var trabajos by remember { mutableStateOf<List<TrabajoItem>>(emptyList()) }
     var selectedTrabajoId by remember { mutableStateOf<Long?>(null) }
+    var isOfflineMode by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var bulkDownloadProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var bulkDownloadMessage by remember { mutableStateOf<String?>(null) }
+    var bulkDownloadHasErrors by remember { mutableStateOf(false) }
     var estadoUpdateError by remember { mutableStateOf<String?>(null) }
     var updatingTrabajoId by remember { mutableStateOf<Long?>(null) }
     var trabajoParaAñadirOperarios by remember { mutableStateOf<TrabajoItem?>(null) }
@@ -49,14 +53,43 @@ fun TrabajosScreen(
         isLoading = true
         errorMessage = null
         try {
-            trabajos = fetchTrabajos()
+            val trabajosDelServidor = fetchTrabajos()
+            trabajos = trabajosDelServidor
+            isOfflineMode = false
+            try {
+                val trabajosGuardados = loadOfflineTrabajos()
+                val isometricosDelServidor = trabajosDelServidor.map { it.isometricoId }.toSet()
+                trabajos = trabajosDelServidor + trabajosGuardados.filterNot {
+                    it.isometricoId in isometricosDelServidor
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                errorMessage = exception.message ?: language.text(
+                    "No se pudieron leer los PDFs guardados en el dispositivo",
+                    "Non se puideron ler os PDFs gardados no dispositivo",
+                )
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            errorMessage = exception.message ?: language.text(
-                "No se pudieron cargar los trabajos",
-                "Non se puideron cargar os traballos",
-            )
+            try {
+                trabajos = loadOfflineTrabajos()
+                isOfflineMode = trabajos.isNotEmpty()
+                if (!isOfflineMode) {
+                    errorMessage = exception.message ?: language.text(
+                        "No se pudieron cargar los trabajos",
+                        "Non se puideron cargar os traballos",
+                    )
+                }
+            } catch (offlineException: CancellationException) {
+                throw offlineException
+            } catch (offlineException: Exception) {
+                errorMessage = offlineException.message ?: language.text(
+                    "No se pudieron leer los PDFs guardados en el dispositivo",
+                    "Non se puideron ler os PDFs gardados no dispositivo",
+                )
+            }
         } finally {
             isLoading = false
         }
@@ -77,7 +110,7 @@ fun TrabajosScreen(
         ) {
             CircularProgressIndicator()
         }
-        errorMessage != null -> Column(
+        errorMessage != null && trabajos.isEmpty() -> Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -92,11 +125,78 @@ fun TrabajosScreen(
         }
         else -> TrabajosSection(
             listaTrabajos = trabajos,
+            isOfflineMode = isOfflineMode,
+            bulkDownloadProgress = bulkDownloadProgress,
+            bulkDownloadMessage = bulkDownloadMessage,
+            bulkDownloadHasErrors = bulkDownloadHasErrors,
+            onDownloadAll = {
+                if (!isOfflineMode && bulkDownloadProgress == null && trabajos.isNotEmpty()) {
+                    val trabajosUnicos = trabajos.distinctBy { it.isometricoId }
+                    bulkDownloadProgress = 0 to trabajosUnicos.size
+                    bulkDownloadMessage = null
+                    bulkDownloadHasErrors = false
+                    scope.launch {
+                        val failedCodes = mutableListOf<String>()
+                        var downloadedCount = 0
+                        try {
+                            val descargadosIds = listOfflineIsometricoIds().toSet()
+                            val trabajosPendientes = trabajosUnicos.filterNot {
+                                it.isometricoId in descargadosIds
+                            }
+
+                            if (trabajosPendientes.isEmpty()) {
+                                bulkDownloadMessage = language.text(
+                                    "Todos los PDFs ya están descargados.",
+                                    "Todos os PDFs xa están descargados.",
+                                )
+                                return@launch
+                            }
+
+                            bulkDownloadProgress = 0 to trabajosPendientes.size
+                            trabajosPendientes.forEachIndexed { index, trabajo ->
+                                try {
+                                    val pdfBytes = fetchIsometricoPdf(trabajo.isometricoId)
+                                    saveOfflineIsometricoPdf(trabajo, pdfBytes)
+                                    downloadedCount++
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (exception: Exception) {
+                                    failedCodes += trabajo.codigoIsometrico
+                                } finally {
+                                    bulkDownloadProgress = (index + 1) to trabajosPendientes.size
+                                }
+                            }
+                            bulkDownloadMessage = if (failedCodes.isEmpty()) {
+                                language.text(
+                                    "Se descargaron $downloadedCount PDFs nuevos para usar sin conexión.",
+                                    "Descargáronse $downloadedCount PDFs novos para usar sen conexión.",
+                                )
+                            } else {
+                                bulkDownloadHasErrors = true
+                                language.text(
+                                    "Se descargaron $downloadedCount de ${trabajosPendientes.size} PDFs nuevos. Fallaron: ${failedCodes.joinToString()}",
+                                    "Descargáronse $downloadedCount de ${trabajosPendientes.size} PDFs novos. Fallaron: ${failedCodes.joinToString()}",
+                                )
+                            }
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (exception: Exception) {
+                            bulkDownloadHasErrors = true
+                            bulkDownloadMessage = exception.message ?: language.text(
+                                "No se pudo comprobar qué PDFs faltaban por descargar.",
+                                "Non se puido comprobar que PDFs faltaban por descargar.",
+                            )
+                        } finally {
+                            bulkDownloadProgress = null
+                        }
+                    }
+                }
+            },
             onSelectTrabajo = {
                 selectedTrabajoId = it.id
                 onTrabajoSeleccionado(it)
             },
-            estadoUpdateError = estadoUpdateError,
+            estadoUpdateError = estadoUpdateError ?: errorMessage,
             isUpdatingEstado = updatingTrabajoId != null,
             updatingTrabajoId = updatingTrabajoId,
             isAddingOperarios = isSavingOperarios,

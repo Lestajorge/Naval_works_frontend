@@ -145,7 +145,7 @@ fun DashboardPrincipal(
                                     logoutAdministrador()
                                     administrator = null
                                     if (selectedSection == "Asignar trabajo" ||
-                                        selectedSection == "Administrar" ||
+                                        selectedSection == "Administrar operarios" ||
                                         selectedSection == "Isométricos"
                                     ) {
                                         selectedSection = "Trabajos"
@@ -249,6 +249,23 @@ fun DashboardPrincipal(
                         }
                     }
 
+                    if (administrator != null) {
+                        Button(
+                            onClick = {
+                                selectedSection = "Administrar operarios"
+                                trabajoSeleccionado = null
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavalBlue),
+                        ) {
+                            Icon(Icons.Default.Group, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(uiText("Administrar operarios", "Administrar operarios"))
+                        }
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -277,16 +294,6 @@ fun DashboardPrincipal(
                         ) {
                             selectedSection = "Incidencias activas"
                             trabajoSeleccionado = null
-                        }
-                        if (administrator != null) {
-                            NavigationButton(
-                                icon = Icons.Default.AdminPanelSettings,
-                                label = uiText("Administrar", "Administrar"),
-                                isSelected = selectedSection == "Administrar",
-                            ) {
-                                selectedSection = "Administrar"
-                                trabajoSeleccionado = null
-                            }
                         }
                         if (administrator != null) {
                             NavigationButton(
@@ -420,7 +427,7 @@ fun DashboardPrincipal(
                             if (selectedSection == "Asignar trabajo") {
                                 selectedSection = "Trabajos"
                             }
-                            if (selectedSection == "Administrar") {
+                            if (selectedSection == "Administrar operarios") {
                                 selectedSection = "Trabajos"
                             }
                             if (selectedSection == "Isométricos") {
@@ -541,48 +548,13 @@ fun DashboardPrincipal(
                 trabajoSeleccionado = null
             }
             if (administrator != null) {
-                Card(
-                    onClick = {
-                        selectedSection = "Administrar"
-                        trabajoSeleccionado = null
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (selectedSection == "Administrar") {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.primaryContainer
-                        },
-                    ),
+                NavigationButton(
+                    icon = Icons.Default.AdminPanelSettings,
+                    label = uiText("Administrar operarios", "Administrar operarios"),
+                    isSelected = selectedSection == "Administrar operarios",
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AdminPanelSettings,
-                            contentDescription = null,
-                            tint = if (selectedSection == "Administrar") {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            },
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = uiText("Administrar", "Administrar"),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (selectedSection == "Administrar") {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            },
-                        )
-                    }
+                    selectedSection = "Administrar operarios"
+                    trabajoSeleccionado = null
                 }
                 NavigationButton(
                     icon = Icons.Default.PictureAsPdf,
@@ -773,7 +745,7 @@ private fun DashboardSectionContent(
                 onIncidenciasChanged(incidencias - incidencia)
             },
         )
-        "Administrar" -> if (administrator != null) {
+        "Administrar operarios" -> if (administrator != null) {
             GestionOperariosScreen()
         } else {
             Text(

@@ -59,16 +59,30 @@ suspend fun login(usuario: String, password: String): Boolean {
         throw exception
     }
 
-    if (response.status.value == 401) {
-        loginCredentials = null
-        regularLoginCredentials = null
-        return false
-    }
-
     if (response.status.value != 200) {
-        loginCredentials = null
-        regularLoginCredentials = null
-        error("El servidor respondió ${response.status.value} al comprobar las credenciales")
+        val status = response.status.value
+        val details = response.bodyAsText().take(500)
+        return try {
+            val administrator = loginAdministrador(usuario, password)
+            if (administrator != null) {
+                true
+            } else if (status == 401 || status == 403) {
+                loginCredentials = null
+                regularLoginCredentials = null
+                false
+            } else {
+                loginCredentials = null
+                regularLoginCredentials = null
+                error(
+                    "El servidor respondió $status al comprobar las credenciales" +
+                        if (details.isBlank()) "" else ": $details",
+                )
+            }
+        } catch (exception: Exception) {
+            loginCredentials = null
+            regularLoginCredentials = null
+            throw exception
+        }
     }
     return true
 }
@@ -160,7 +174,7 @@ private fun operarioJson(nombre: String, apellidos: String, especialista: String
     buildJsonObject {
         put("nombre", nombre)
         put("apellidos", apellidos)
-        put("especialista", especialista)
+        put("especialista", especialista.trim().uppercase())
     }
 
 suspend fun fetchIsometricos(): List<IsometricoOption> =

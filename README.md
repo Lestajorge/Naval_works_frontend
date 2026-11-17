@@ -12,8 +12,9 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 - Búsqueda de trabajos por bloque, código de isométrico o estado.
 - Cambio del estado de un trabajo y opción para añadirle operarios desde su tarjeta.
 - Al seleccionar un trabajo, el panel derecho muestra el PDF del isométrico y el panel izquierdo agrupa los operarios asignados en montaje/tuberos y soldadura/soldadores.
+- En **Trabajos**, el botón **Actualizar PDFs** guarda en el dispositivo solo los PDFs de los isométricos asociados a trabajos que aún no estén descargados; muestra el progreso y los fallos. También se pueden guardar o actualizar individualmente desde el visor. Los isométricos guardados aparecen en la lista cuando no hay conexión.
 - Botón **Asignar Nuevo Trabajo** para elegir un isométrico y uno o varios operarios.
-- Acceso **Administrar** para dar de alta, dar de baja y modificar operarios en la base de datos.
+- Acceso de administrador **Administrar operarios** para dar de alta, dar de baja y modificar operarios en la base de datos.
 - Gestión de isométricos para administradores: subida de PDF como borrador, publicación para asignación y archivo sin borrar registros.
 - Usuarios y administradores pueden cambiar estados, asignar operarios, crear trabajos y gestionar incidencias; la gestión de operarios e isométricos requiere el modo administrador.
 - Botón **Añadir nueva incidencia** para crear incidencias; se muestran en tarjetas que pueden eliminarse.
@@ -45,6 +46,8 @@ shared/
 La lógica compartida está en `shared/src/commonMain`; sus implementaciones específicas de plataforma están en `shared/src/androidMain` y `shared/src/jvmMain`.
 
 Las preferencias de aplicación y conexión se guardan en SQLite: Android utiliza su base de datos privada de la aplicación y escritorio utiliza `~/.navalworks/preferences.db`.
+
+Los PDFs descargados se guardan en el almacenamiento privado de la aplicación en Android y en `~/.navalworks/isometricos` en escritorio. En Android se eliminan al desinstalar la aplicación.
 
 ## Requisitos
 

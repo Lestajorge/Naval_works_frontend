@@ -20,6 +20,11 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TrabajosSection(
     listaTrabajos: List<TrabajoItem>,
+    isOfflineMode: Boolean,
+    bulkDownloadProgress: Pair<Int, Int>?,
+    bulkDownloadMessage: String?,
+    bulkDownloadHasErrors: Boolean,
+    onDownloadAll: () -> Unit,
     onSelectTrabajo: (TrabajoItem) -> Unit,
     onEstadoChange: (Long, EstadoTrabajo) -> Unit,
     estadoUpdateError: String?,
@@ -45,6 +50,52 @@ fun TrabajosSection(
             .fillMaxSize()
             .padding(horizontal = 8.dp, vertical = 16.dp)
     ) {
+        if (isOfflineMode) {
+            Text(
+                text = uiText(
+                    "Sin conexión: solo se muestran los isométricos descargados.",
+                    "Sen conexión: só se amosan os isométricos descargados.",
+                ),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+
+        Button(
+            onClick = onDownloadAll,
+            enabled = !isOfflineMode && bulkDownloadProgress == null && listaTrabajos.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                when {
+                    isOfflineMode -> uiText("Descarga masiva no disponible sin conexión", "A descarga masiva non está dispoñible sen conexión")
+                    bulkDownloadProgress != null -> uiText("Actualizando PDFs...", "Actualizando PDFs...")
+                    else -> uiText("Actualizar PDFs", "Actualizar PDFs")
+                },
+            )
+        }
+        bulkDownloadProgress?.let { (completed, total) ->
+            Text(
+                text = uiText("Descargando $completed de $total", "Descargando $completed de $total"),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            LinearProgressIndicator(
+                progress = { if (total == 0) 0f else completed.toFloat() / total },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            )
+        }
+        bulkDownloadMessage?.let { message ->
+            Text(
+                text = message,
+                color = if (bulkDownloadHasErrors) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
         // Buscador superior
         OutlinedTextField(
             value = searchQuery,
@@ -61,6 +112,17 @@ fun TrabajosSection(
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+
+        if (isOfflineMode && estadoUpdateError == null) {
+            Text(
+                text = uiText(
+                    "Los cambios de estado y operarios requieren conexión.",
+                    "Os cambios de estado e operarios requiren conexión.",
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
@@ -85,14 +147,14 @@ fun TrabajosSection(
                 IsometricoCard(
                     item = trabajo,
                     onClick = { onSelectTrabajo(trabajo) },
-                    isUpdating = isUpdatingEstado || isAddingOperarios,
+                    isUpdating = isOfflineMode || isUpdatingEstado || isAddingOperarios,
                     isSaving = trabajo.id == updatingTrabajoId,
                     isAddingOperarios =
-                        isAddingOperarios && trabajo.id == addingOperariosTrabajoId,
+                        !isOfflineMode && isAddingOperarios && trabajo.id == addingOperariosTrabajoId,
                     onEstadoChange = { nuevoEstado ->
-                        onEstadoChange(trabajo.id, nuevoEstado)
+                        if (!isOfflineMode) onEstadoChange(trabajo.id, nuevoEstado)
                     },
-                    onAddOperarios = { onAddOperarios(trabajo) },
+                    onAddOperarios = { if (!isOfflineMode) onAddOperarios(trabajo) },
                 )
             }
         }

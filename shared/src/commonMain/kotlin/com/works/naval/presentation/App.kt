@@ -152,11 +152,14 @@ fun LoginScreen(preferences: AppPreferences) {
                            try {
                                loggedIn = login(user, password)
                                if (!loggedIn) message = "Usuario incorrecto"
-                           } catch (exception: CancellationException) {
-                               throw exception
-                           } catch (exception: Exception) {
-                               message = "No se pudo conectar con el servidor"
-                           } finally {
+                            } catch (exception: CancellationException) {
+                                throw exception
+                            } catch (exception: Exception) {
+                                message = exception.message
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let { "No se pudo iniciar sesión: $it" }
+                                    ?: "No se pudo conectar con el servidor"
+                            } finally {
                                loading = false
                            }
                        }

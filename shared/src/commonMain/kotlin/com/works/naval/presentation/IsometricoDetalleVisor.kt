@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun IsometricoDetalleVisor(
@@ -33,13 +35,29 @@ fun IsometricoDetalleVisor(
     var isLoading by remember(item.isometricoId) { mutableStateOf(true) }
     var errorMessage by remember(item.isometricoId) { mutableStateOf<String?>(null) }
     var refreshKey by remember(item.isometricoId) { mutableStateOf(0) }
+    var hasOfflineCopy by remember(item.isometricoId) { mutableStateOf(false) }
+    var isUsingOfflineCopy by remember(item.isometricoId) { mutableStateOf(false) }
+    var isSavingOfflineCopy by remember(item.isometricoId) { mutableStateOf(false) }
+    var storageMessage by remember(item.isometricoId) { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     val language = LocalUiLanguage.current
 
     LaunchedEffect(item.isometricoId, refreshKey) {
         isLoading = true
         errorMessage = null
         try {
-            pdfBytes = fetchIsometricoPdf(item.isometricoId)
+            val offlinePdf = readOfflineIsometricoPdf(item.isometricoId)
+            hasOfflineCopy = offlinePdf != null
+            try {
+                pdfBytes = fetchIsometricoPdf(item.isometricoId)
+                isUsingOfflineCopy = false
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                if (offlinePdf == null) throw exception
+                pdfBytes = offlinePdf
+                isUsingOfflineCopy = true
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
@@ -86,6 +104,81 @@ fun IsometricoDetalleVisor(
                     maxLines = 2,
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = {
+                    val bytes = pdfBytes ?: return@Button
+                    isSavingOfflineCopy = true
+                    storageMessage = null
+                    scope.launch {
+                        try {
+                            saveOfflineIsometricoPdf(item, bytes)
+                            hasOfflineCopy = true
+                            isUsingOfflineCopy = false
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (exception: Exception) {
+                            storageMessage = exception.message ?: language.text(
+                                "No se pudo guardar el PDF en el dispositivo",
+                                "Non se puido gardar o PDF no dispositivo",
+                            )
+                        } finally {
+                            isSavingOfflineCopy = false
+                        }
+                    }
+                },
+                enabled = pdfBytes != null && !isSavingOfflineCopy,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    when {
+                        isSavingOfflineCopy -> uiText("Guardando...", "Gardando...")
+                        hasOfflineCopy -> uiText("Actualizar copia sin conexión", "Actualizar copia sen conexión")
+                        else -> uiText("Descargar para usar sin conexión", "Descargar para usar sen conexión")
+                    },
+                )
+            }
+            if (hasOfflineCopy) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                deleteOfflineIsometricoPdf(item.isometricoId)
+                                hasOfflineCopy = false
+                                isUsingOfflineCopy = false
+                                storageMessage = null
+                            } catch (exception: CancellationException) {
+                                throw exception
+                            } catch (exception: Exception) {
+                                storageMessage = exception.message ?: language.text(
+                                    "No se pudo eliminar la copia local",
+                                    "Non se puido eliminar a copia local",
+                                )
+                            }
+                        }
+                    },
+                    enabled = !isSavingOfflineCopy,
+                ) {
+                    Text(uiText("Eliminar copia", "Eliminar copia"))
+                }
+            }
+        }
+        if (isUsingOfflineCopy) {
+            Text(
+                text = uiText("PDF abierto desde el dispositivo (sin conexión)", "PDF aberto desde o dispositivo (sen conexión)"),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        storageMessage?.let { message ->
+            Text(text = message, color = MaterialTheme.colorScheme.error)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
