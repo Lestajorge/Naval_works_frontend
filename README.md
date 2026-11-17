@@ -14,7 +14,7 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 - Al seleccionar un trabajo, el panel derecho muestra el PDF del isométrico y el panel izquierdo agrupa los operarios asignados en montaje/tuberos y soldadura/soldadores.
 - En **Trabajos**, el botón **Actualizar PDFs** guarda en el dispositivo solo los PDFs de los isométricos asociados a trabajos que aún no estén descargados; muestra el progreso y los fallos. También se pueden guardar o actualizar individualmente desde el visor. Los isométricos guardados aparecen en la lista cuando no hay conexión.
 - Botón **Asignar Nuevo Trabajo** para elegir un isométrico y uno o varios operarios.
-- Acceso de administrador **Administrar operarios** para dar de alta, dar de baja y modificar operarios en la base de datos.
+- Inicio de sesión de administrador desde el menú de configuración y acceso a **Administrar operarios** para dar de alta, dar de baja y modificar operarios en la base de datos.
 - Gestión de isométricos para administradores: subida de PDF como borrador, publicación para asignación y archivo sin borrar registros.
 - Usuarios y administradores pueden cambiar estados, asignar operarios, crear trabajos y gestionar incidencias; la gestión de operarios e isométricos requiere el modo administrador.
 - Botón **Añadir nueva incidencia** para crear incidencias; se muestran en tarjetas que pueden eliminarse.
@@ -71,11 +71,12 @@ También puedes abrir el proyecto en Android Studio y ejecutar la configuración
 
 ## Backend
 
-La aplicación espera el backend Spring Security del proyecto Naval_Works. Las peticiones autenticadas usan autenticación HTTP Basic con las credenciales del inicio de sesión.
+La aplicación espera el backend Spring Security del proyecto Naval_Works. Las peticiones autenticadas usan autenticación HTTP Basic con las credenciales del inicio de sesión. El acceso de administrador se valida mediante `POST /api/auth/admin`, enviando `usuario` y `password` en JSON; la respuesta debe incluir el `usuario` y el rol `ADMINISTRADOR`.
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
-| `GET` | `/api/bloques` | Comprobar las credenciales y resolver los bloques de los isométricos |
+| `GET` | `/api/bloques` | Resolver los bloques de los isométricos |
+| `POST` | `/api/auth/admin` | Validar el acceso de administrador con JSON `{"usuario":"...","password":"..."}` |
 | `GET` | `/api/operarios` | Obtener operarios; la interfaz usa `id`, `nombre`, `apellidos` y `especialista` |
 | `POST` | `/api/operarios` | Crear un operario con `nombre`, `apellidos` y `especialista` |
 | `PUT` | `/api/operarios/{id}` | Modificar el nombre, apellidos y especialidad de un operario |
@@ -94,7 +95,7 @@ El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `
 
 La API de incidencias aún no está conectada: las acciones de añadir y eliminar incidencias solo modifican la lista local de demostración.
 
-La gestión de isométricos del frontend requiere los tres endpoints nuevos de la tabla. El backend debe proteger las rutas de administración para el rol `ADMINISTRADOR` y devolver en `GET /api/isometricos` únicamente isométricos publicados a los encargados.
+La gestión de isométricos del frontend requiere los endpoints de administración de la tabla. El backend debe proteger estas rutas para el rol `ADMINISTRADOR` y devolver en `GET /api/isometricos` únicamente isométricos publicados a los encargados.
 
 ## Pruebas
 
