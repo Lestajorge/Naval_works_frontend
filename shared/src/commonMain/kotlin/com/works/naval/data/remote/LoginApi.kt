@@ -118,6 +118,11 @@ fun logoutAdministrador() {
     loginCredentials = regularLoginCredentials
 }
 
+fun logoutSession() {
+    loginCredentials = null
+    regularLoginCredentials = null
+}
+
 suspend fun fetchOperarios(): List<OperarioOption> =
     fetchJsonArray("/api/operarios").map { element ->
         val operario = element.jsonObject
@@ -129,10 +134,31 @@ suspend fun fetchOperarios(): List<OperarioOption> =
         )
     }
 
-suspend fun createOperario(nombre: String, apellidos: String, especialista: String) {
+suspend fun createOperario(
+    nombre: String,
+    apellidos: String,
+    especialista: String,
+    usuario: String? = null,
+    password: String? = null,
+) {
+    val isEncargado = especialista.equals("Encargado", ignoreCase = true)
+    require(!isEncargado || (!usuario.isNullOrBlank() && !password.isNullOrBlank())) {
+        "El encargado requiere nombre de usuario y contraseña"
+    }
     val response = httpClient.post("$apiBaseUrl/api/operarios") {
         contentType(ContentType.Application.Json)
-        setBody(operarioJson(nombre, apellidos, especialista).toString())
+        setBody(
+            buildJsonObject {
+                put("nombre", nombre)
+                put("apellidos", apellidos)
+                put("especialista", especialista.trim().uppercase())
+                put("administrador", 0)
+                if (isEncargado) {
+                    put("usuario", usuario.orEmpty())
+                    put("password", password.orEmpty())
+                }
+            }.toString(),
+        )
     }
 
     if (response.status.value !in 200..299) {
@@ -208,24 +234,11 @@ suspend fun fetchIsometricosAdministracion(): List<IsometricoAdministrado> =
         )
     }
 
-suspend fun createIsometricoDraft(
+suspend fun createIsometrico(
     codigo: String,
     bloqueId: Long,
     pdf: PdfFileSelection,
 ) {
-    val createResponse = httpClient.post("$apiBaseUrl/api/isometricos") {
-        contentType(ContentType.Application.Json)
-        setBody(
-            buildJsonObject {
-                put("codigoIsometrico", codigo)
-                put("bloqueId", bloqueId)
-            }.toString(),
-        )
-    }
-    requireSuccessful(createResponse, "crear el borrador del isométrico")
-
-    val createdIsometrico = Json.parseToJsonElement(createResponse.bodyAsText()).jsonObject
-    val id = createdIsometrico.requiredLong("id")
     val safeFileName = pdf.fileName
         .substringAfterLast('/')
         .substringAfterLast('\\')
@@ -233,8 +246,10 @@ suspend fun createIsometricoDraft(
         .joinToString("")
         .ifBlank { "isometrico.pdf" }
     val response = httpClient.submitFormWithBinaryData(
-        url = "$apiBaseUrl/api/isometricos/$id/pdf",
+        url = "$apiBaseUrl/api/isometricos",
         formData = formData {
+            append("codigoIsometrico", codigo)
+            append("bloqueId", bloqueId.toString())
             append(
                 "file",
                 pdf.bytes,
@@ -245,15 +260,7 @@ suspend fun createIsometricoDraft(
             )
         },
     )
-    requireSuccessful(response, "subir el PDF del isométrico")
-}
-
-suspend fun updateIsometricoEstado(id: Long, estado: EstadoIsometrico) {
-    val response = httpClient.put("$apiBaseUrl/api/isometricos/$id/estado") {
-        contentType(ContentType.Application.Json)
-        setBody(buildJsonObject { put("estado", estado.name) }.toString())
-    }
-    requireSuccessful(response, "actualizar el estado del isométrico $id")
+    requireSuccessful(response, "crear el isométrico y subir su PDF")
 }
 
 suspend fun fetchBloques(): List<BloqueOption> =

@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.works.naval.core.localization.LocalUiLanguage
 import com.works.naval.core.localization.text
@@ -38,6 +39,8 @@ fun GestionOperariosScreen() {
     var nombre by remember { mutableStateOf("") }
     var apellidos by remember { mutableStateOf("") }
     var especialista by remember { mutableStateOf("") }
+    var usuario by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var formError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val language = LocalUiLanguage.current
@@ -67,6 +70,8 @@ fun GestionOperariosScreen() {
         nombre = ""
         apellidos = ""
         especialista = ""
+        usuario = ""
+        password = ""
         formError = null
         operationError = null
         showFormDialog = true
@@ -77,6 +82,8 @@ fun GestionOperariosScreen() {
         nombre = operario.nombre
         apellidos = operario.apellidos
         especialista = operario.especialista
+        usuario = ""
+        password = ""
         formError = null
         operationError = null
         showFormDialog = true
@@ -85,10 +92,19 @@ fun GestionOperariosScreen() {
     fun saveOperario() {
         val normalizedNombre = nombre.trim()
         val normalizedApellidos = apellidos.trim()
+        val isCreatingEncargado =
+            editingOperario == null && especialista.equals("Encargado", ignoreCase = true)
         if (normalizedNombre.isBlank() || normalizedApellidos.isBlank() || especialista.isBlank()) {
             formError = language.text(
                 "Completa el nombre, los apellidos y la especialidad.",
                 "Completa o nome, os apelidos e a especialidade.",
+            )
+            return
+        }
+        if (isCreatingEncargado && (usuario.isBlank() || password.isBlank())) {
+            formError = language.text(
+                "Introduce el nombre de usuario y la contraseña del encargado.",
+                "Introduce o nome de usuario e o contrasinal do encargado.",
             )
             return
         }
@@ -100,7 +116,13 @@ fun GestionOperariosScreen() {
             try {
                 val operario = editingOperario
                 if (operario == null) {
-                    createOperario(normalizedNombre, normalizedApellidos, especialista)
+                    createOperario(
+                        nombre = normalizedNombre,
+                        apellidos = normalizedApellidos,
+                        especialista = especialista,
+                        usuario = usuario.trim().takeIf { isCreatingEncargado },
+                        password = password.takeIf { isCreatingEncargado },
+                    )
                     successMessage = language.text(
                         "Operario registrado correctamente.",
                         "Operario rexistrado correctamente.",
@@ -291,8 +313,36 @@ fun GestionOperariosScreen() {
                     EspecialidadSelector(
                         value = especialista,
                         enabled = !isSaving,
-                        onSelect = { especialista = it; formError = null },
+                        onSelect = {
+                            especialista = it
+                            if (!it.equals("Encargado", ignoreCase = true)) {
+                                usuario = ""
+                                password = ""
+                            }
+                            formError = null
+                        },
                     )
+                    if (editingOperario == null &&
+                        especialista.equals("Encargado", ignoreCase = true)
+                    ) {
+                        OutlinedTextField(
+                            value = usuario,
+                            onValueChange = { usuario = it; formError = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(uiText("Nombre de usuario", "Nome de usuario")) },
+                            singleLine = true,
+                            enabled = !isSaving,
+                        )
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it; formError = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(uiText("Contraseña", "Contrasinal")) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            enabled = !isSaving,
+                        )
+                    }
                     formError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },

@@ -59,9 +59,7 @@ fun GestionIsometricosScreen() {
     var isometricos by remember { mutableStateOf<List<IsometricoAdministrado>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
-    var updatingIsometricoId by remember { mutableStateOf<Long?>(null) }
     var loadError by remember { mutableStateOf<String?>(null) }
-    var operationError by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -115,7 +113,7 @@ fun GestionIsometricosScreen() {
         blockMenuExpanded = false
     }
 
-    fun createDraft() {
+    fun createIsometrico() {
         val normalizedCode = codigo.trim()
         val selectedBlock = selectedBlockId
         val pdf = selectedPdf
@@ -142,15 +140,15 @@ fun GestionIsometricosScreen() {
                 formError = null
                 scope.launch {
                     try {
-                        createIsometricoDraft(
+                        createIsometrico(
                             codigo = normalizedCode,
                             bloqueId = selectedBlock,
                             pdf = pdf,
                         )
                         closeCreateDialog()
                         successMessage = language.text(
-                            "Isométrico guardado como borrador.",
-                            "Isométrico gardado como borrador.",
+                            "Isométrico creado correctamente.",
+                            "Isométrico creado correctamente.",
                         )
                         refreshKey++
                     } catch (exception: CancellationException) {
@@ -164,42 +162,6 @@ fun GestionIsometricosScreen() {
                         isSaving = false
                     }
                 }
-            }
-        }
-    }
-
-    fun changeStatus(isometrico: IsometricoAdministrado, newStatus: EstadoIsometrico) {
-        if (updatingIsometricoId != null) return
-        updatingIsometricoId = isometrico.id
-        operationError = null
-        successMessage = null
-        scope.launch {
-            try {
-                updateIsometricoEstado(isometrico.id, newStatus)
-                successMessage = when (newStatus) {
-                    EstadoIsometrico.PUBLICADO -> language.text(
-                        "Isométrico publicado.",
-                        "Isométrico publicado.",
-                    )
-                    EstadoIsometrico.ARCHIVADO -> language.text(
-                        "Isométrico archivado.",
-                        "Isométrico arquivado.",
-                    )
-                    EstadoIsometrico.BORRADOR -> language.text(
-                        "Isométrico actualizado.",
-                        "Isométrico actualizado.",
-                    )
-                }
-                refreshKey++
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                operationError = exception.message ?: language.text(
-                    "No se pudo actualizar el isométrico.",
-                    "Non se puido actualizar o isométrico.",
-                )
-            } finally {
-                updatingIsometricoId = null
             }
         }
     }
@@ -222,7 +184,7 @@ fun GestionIsometricosScreen() {
             )
             IconButton(
                 onClick = { refreshKey++ },
-                enabled = !isLoading && !isSaving && updatingIsometricoId == null,
+                enabled = !isLoading && !isSaving,
             ) {
                 Icon(
                     Icons.Default.Refresh,
@@ -231,7 +193,6 @@ fun GestionIsometricosScreen() {
             }
             Button(
                 onClick = {
-                    operationError = null
                     formError = null
                     showCreateDialog = true
                 },
@@ -241,7 +202,6 @@ fun GestionIsometricosScreen() {
             }
         }
 
-        operationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
 
         when {
@@ -310,25 +270,6 @@ fun GestionIsometricosScreen() {
                                     color = estadoColor(isometrico.estado),
                                     style = MaterialTheme.typography.labelLarge,
                                 )
-                                when (isometrico.estado) {
-                                    EstadoIsometrico.BORRADOR -> Button(
-                                        onClick = {
-                                            changeStatus(isometrico, EstadoIsometrico.PUBLICADO)
-                                        },
-                                        enabled = updatingIsometricoId == null,
-                                    ) {
-                                        Text(uiText("Publicar", "Publicar"))
-                                    }
-                                    EstadoIsometrico.PUBLICADO -> OutlinedButton(
-                                        onClick = {
-                                            changeStatus(isometrico, EstadoIsometrico.ARCHIVADO)
-                                        },
-                                        enabled = updatingIsometricoId == null,
-                                    ) {
-                                        Text(uiText("Archivar", "Arquivar"))
-                                    }
-                                    EstadoIsometrico.ARCHIVADO -> Unit
-                                }
                             }
                         }
                     }
@@ -406,13 +347,13 @@ fun GestionIsometricosScreen() {
             },
             confirmButton = {
                 Button(
-                    onClick = ::createDraft,
+                    onClick = ::createIsometrico,
                     enabled = !isSaving,
                 ) {
                     if (isSaving) {
                         CircularProgressIndicator()
                     } else {
-                        Text(uiText("Guardar borrador", "Gardar borrador"))
+                        Text(uiText("Crear isométrico", "Crear isométrico"))
                     }
                 }
             },
@@ -430,14 +371,10 @@ fun GestionIsometricosScreen() {
 
 @Composable
 private fun estadoLabel(estado: EstadoIsometrico): String = when (estado) {
-    EstadoIsometrico.BORRADOR -> uiText("Borrador", "Borrador")
     EstadoIsometrico.PUBLICADO -> uiText("Publicado", "Publicado")
-    EstadoIsometrico.ARCHIVADO -> uiText("Archivado", "Arquivado")
 }
 
 @Composable
 private fun estadoColor(estado: EstadoIsometrico) = when (estado) {
-    EstadoIsometrico.BORRADOR -> MaterialTheme.colorScheme.tertiary
     EstadoIsometrico.PUBLICADO -> MaterialTheme.colorScheme.primary
-    EstadoIsometrico.ARCHIVADO -> MaterialTheme.colorScheme.onSurfaceVariant
 }

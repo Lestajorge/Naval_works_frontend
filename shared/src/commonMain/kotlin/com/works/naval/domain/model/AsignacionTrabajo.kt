@@ -23,9 +23,7 @@ data class BloqueOption(
 )
 
 enum class EstadoIsometrico {
-    BORRADOR,
     PUBLICADO,
-    ARCHIVADO,
 }
 
 data class IsometricoAdministrado(

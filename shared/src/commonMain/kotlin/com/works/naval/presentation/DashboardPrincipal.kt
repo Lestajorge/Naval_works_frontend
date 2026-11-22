@@ -48,6 +48,7 @@ private fun DashboardPrincipalPreview() {
         DashboardPrincipal(
             preferences = PreviewAppPreferences(),
             onGenerateReport = {},
+            onLogout = {},
         )
     }
 }
@@ -56,6 +57,7 @@ private fun DashboardPrincipalPreview() {
 fun DashboardPrincipal(
     preferences: AppPreferences,
     onGenerateReport: (String) -> Unit,
+    onLogout: () -> Unit,
 ) {
     var selectedBlock by remember { mutableStateOf("B322") } // Bloque seleccionado por defecto
     var selectedSection by remember { mutableStateOf("Trabajos") }
@@ -135,6 +137,15 @@ fun DashboardPrincipal(
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF2E7D32),
+                            )
+                        }
+                        IconButton(onClick = onLogout) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = uiText(
+                                    "Cerrar sesión y volver al inicio",
+                                    "Pechar sesión e volver ao inicio",
+                                ),
                             )
                         }
                         IconButton(
@@ -415,6 +426,15 @@ fun DashboardPrincipal(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF2E7D32),
+                    )
+                }
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = uiText(
+                            "Cerrar sesión y volver al inicio",
+                            "Pechar sesión e volver ao inicio",
+                        ),
                     )
                 }
                 IconButton(

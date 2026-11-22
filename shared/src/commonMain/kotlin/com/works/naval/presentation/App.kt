@@ -81,6 +81,10 @@ fun LoginScreen(preferences: AppPreferences) {
            DashboardPrincipal(
                preferences = preferences,
                onGenerateReport = {},
+               onLogout = {
+                   logoutSession()
+                   loggedIn = false
+               },
            )
         }
     } else {
