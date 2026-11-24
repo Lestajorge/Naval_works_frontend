@@ -1,107 +1,252 @@
 # NavalWorks Frontend
 
-Aplicación multiplataforma para la supervisión y gestión de trabajos en un entorno naval. Ofrece una interfaz compartida para Android y escritorio, desarrollada con Kotlin Multiplatform y Compose Multiplatform.
+Aplicación multiplataforma para la gestión y supervisión de trabajos en el entorno naval. Está desarrollada con Kotlin Multiplatform y Compose Multiplatform y dispone de interfaces para Android y escritorio.
 
-## Funcionalidades
+## Características principales
 
-- Inicio de sesión conectado a un servicio backend.
-- Acción **Cerrar sesión** desde el dashboard para volver al inicio de sesión.
-- Panel de control con indicadores de avance y navegación por trabajos, operarios e incidencias.
-- Selector de idioma en el engranaje de configuración: español o gallego.
-- El idioma elegido se guarda localmente en SQLite y se restaura al volver a abrir la aplicación.
-- Configuración de conexión para definir la URL, el usuario y la contraseña del servidor, con valores por defecto por plataforma.
-- Búsqueda de trabajos por bloque, código de isométrico o estado.
-- Cambio del estado de un trabajo y opción para añadirle operarios desde su tarjeta.
-- Al seleccionar un trabajo, el panel derecho muestra el PDF del isométrico y el panel izquierdo agrupa los operarios asignados en montaje/tuberos y soldadura/soldadores.
-- En **Trabajos**, el botón **Actualizar PDFs** guarda en el dispositivo solo los PDFs de los isométricos asociados a trabajos que aún no estén descargados; muestra el progreso y los fallos. También se pueden guardar o actualizar individualmente desde el visor. Los isométricos guardados aparecen en la lista cuando no hay conexión.
-- Botón **Asignar Nuevo Trabajo** para elegir un isométrico y uno o varios operarios.
-- Inicio de sesión de administrador desde el menú de configuración y acceso a **Administrar operarios** para dar de alta, dar de baja y modificar operarios en la base de datos.
-- Gestión de isométricos para administradores: creación con PDF obligatorio. Todos los isométricos se crean publicados y pueden asignarse a trabajos.
-- Usuarios y administradores pueden cambiar estados, asignar operarios, crear trabajos y gestionar incidencias; la gestión de operarios e isométricos requiere el modo administrador.
-- Botón **Añadir nueva incidencia** para crear incidencias; se muestran en tarjetas que pueden eliminarse.
-- Visualización del logotipo de NavalWorks en la sección **Operarios en buque**.
-- Diseño adaptable: navegación compacta por debajo de 840 dp, tarjetas apiladas en móvil y cuadrícula de bloques que ajusta sus columnas al ancho disponible. El dashboard tiene previews de 360×800 (móvil), 800×1280 (tablet vertical) y 1280×800 dp (tablet horizontal).
-
-> Los indicadores del panel son demostrativos. Las incidencias se guardan localmente en el dispositivo y se conservan al cerrar la aplicación, pero todavía no se sincronizan con el backend. Los trabajos y operarios sí utilizan los endpoints descritos más abajo.
+- Inicio de sesión con credenciales del backend.
+- Inicio de sesión adicional como administrador.
+- Panel adaptable para móvil, tablet y escritorio.
+- Navegación por trabajos, incidencias, operarios e isométricos.
+- Cambio de estado y asignación de operarios a trabajos.
+- Creación y eliminación de trabajos.
+- Creación y eliminación de isométricos con PDF obligatorio.
+- Gestión de operarios: alta, modificación y baja.
+- Descarga y visualización de PDFs de isométricos.
+- Indicadores básicos de avance y estado del taller.
+- Interfaz en español y gallego.
+- Configuración de URL, usuario y contraseña del servidor.
+- Persistencia local de preferencias e incidencias.
 
 ## Tecnologías
 
 - Kotlin Multiplatform
-- Compose Multiplatform y Material 3
-- Ktor Client para las peticiones HTTP
+- Compose Multiplatform
+- Material 3
+- Kotlin Coroutines
+- Ktor Client
+- Kotlin Serialization
+- SQLite
 - Gradle
+- Apache PDFBox en escritorio
 
-## Estructura del proyecto
+## Arquitectura
 
 ```text
-androidApp/   Punto de entrada de Android
-desktopApp/   Punto de entrada de escritorio (JVM)
+androidApp/
+  Aplicación Android
+
+desktopApp/
+  Aplicación de escritorio JVM
+
 shared/
-  core/       Funcionalidades base y localización
-  data/       Preferencias y comunicación con el backend
-  domain/     Modelos y estados del dominio
-  platform/   Implementaciones específicas y APIs expect/actual
-  presentation/ Pantallas, componentes y diálogos de Compose
+  src/
+    commonMain/
+      Core compartido, modelos, interfaz Compose y servicios
+    androidMain/
+      Implementaciones específicas de Android
+    jvmMain/
+      Implementaciones específicas de escritorio
 ```
 
-La lógica compartida está en `shared/src/commonMain`; sus implementaciones específicas de plataforma están en `shared/src/androidMain` y `shared/src/jvmMain`.
+La interfaz y la mayor parte de la lógica residen en el módulo `shared`.
 
-Las preferencias de aplicación y conexión, junto con las incidencias, se guardan en SQLite: Android utiliza su base de datos privada de la aplicación y escritorio utiliza `~/.navalworks/preferences.db`.
+Las implementaciones específicas se encuentran en:
 
-Los PDFs descargados se guardan en el almacenamiento privado de la aplicación en Android y en `~/.navalworks/isometricos` en escritorio. En Android se eliminan al desinstalar la aplicación.
+- `shared/src/androidMain`: Android.
+- `shared/src/jvmMain`: escritorio JVM.
 
 ## Requisitos
 
-- JDK 11 o superior
-- Android Studio para compilar y ejecutar la aplicación Android
-- Un emulador/dispositivo Android o un entorno de escritorio compatible
+- JDK 21 recomendado.
+- Android Studio para ejecutar la versión Android.
+- Backend accesible en el puerto `8080`.
+- Para Android físico, el dispositivo debe poder alcanzar la dirección de red del servidor.
 
-## Ejecución
+## Ejecutar el proyecto
+
+### Escritorio
 
 Desde la raíz del proyecto:
 
 ```bash
-# Compilar la aplicación Android en modo debug
-./gradlew :androidApp:assembleDebug
-
-# Ejecutar la aplicación de escritorio
 ./gradlew :desktopApp:run
 ```
 
-También puedes abrir el proyecto en Android Studio y ejecutar la configuración de Android desde el IDE.
+También puede generarse una distribución nativa:
 
-## Backend
+```bash
+./gradlew :desktopApp:packageDistributionForCurrentOS
+```
 
-La aplicación espera el backend Spring Security del proyecto Naval_Works. Las peticiones autenticadas usan autenticación HTTP Basic con las credenciales del inicio de sesión. El acceso de administrador se valida mediante `POST /api/auth/admin`, enviando `usuario` y `password` en JSON; la respuesta debe incluir el `usuario` y el rol `ADMINISTRADOR`.
+### Android
+
+Compilar el APK de debug:
+
+```bash
+./gradlew :androidApp:assembleDebug
+```
+
+El APK se genera en:
+
+```text
+androidApp/build/outputs/apk/debug/
+```
+
+## Conexión con el backend
+
+La aplicación utiliza autenticación HTTP Basic para las operaciones protegidas.
+
+Las URL predeterminadas son:
+
+- Escritorio: `http://localhost:8080`
+- Emulador Android: `http://10.0.2.2:8080`
+
+La URL, el usuario y la contraseña pueden cambiarse desde el panel de configuración de la aplicación.
+
+Para un dispositivo Android físico, la URL predeterminada puede configurarse en:
+
+```text
+shared/src/androidMain/kotlin/com/works/naval/platform/Platform.android.kt
+```
+
+Por ejemplo:
+
+```kotlin
+actual val defaultApiBaseUrl: String = "http://192.168.1.50:8080"
+```
+
+En una red real se recomienda HTTPS.
+
+## Endpoints utilizados
 
 | Método | Ruta | Uso |
 | --- | --- | --- |
-| `GET` | `/api/bloques` | Resolver los bloques de los isométricos |
-| `POST` | `/api/auth/admin` | Validar el acceso de administrador con JSON `{"usuario":"...","password":"..."}` |
-| `GET` | `/api/operarios` | Obtener operarios; la interfaz usa `id`, `nombre`, `apellidos` y `especialista` |
-| `POST` | `/api/operarios` | Crear un operario con `nombre`, `apellidos` y `especialista`; para `Encargado`, enviar además `usuario`, `password` y `administrador: 0` para permitir inicio de sesión sin conceder acceso de administrador |
-| `PUT` | `/api/operarios/{id}` | Modificar el nombre, apellidos y especialidad de un operario |
-| `DELETE` | `/api/operarios/{id}` | Dar de baja un operario |
-| `GET` | `/api/trabajos` | Obtener trabajos, con `estado`, `isometricoId` y `operarioIds` |
-| `POST` | `/api/trabajos` | Crear un trabajo con estado, isométrico y operarios |
-| `PUT` | `/api/trabajos/{id}` | Actualizar el estado o la lista de operarios de un trabajo |
-| `GET` | `/api/isometricos` | Obtener los isométricos asociados a los trabajos |
-| `GET` | `/api/isometricos/{id}/pdf` | Descargar el PDF del isométrico |
-| `GET` | `/api/isometricos/admin` | Listar todos los isométricos con su estado |
-| `POST` | `/api/isometricos` | Crear el isométrico y subir su PDF en una petición multipart con `codigoIsometrico`, `bloqueId` y el archivo en el campo `file` |
+| `GET` | `/api/bloques` | Obtener bloques e iniciar sesión |
+| `POST` | `/api/auth/admin` | Validar acceso de administrador |
+| `GET` | `/api/operarios` | Obtener operarios |
+| `POST` | `/api/operarios` | Crear operario |
+| `PUT` | `/api/operarios/{id}` | Modificar operario |
+| `DELETE` | `/api/operarios/{id}` | Dar de baja operario |
+| `GET` | `/api/trabajos` | Obtener trabajos |
+| `POST` | `/api/trabajos` | Crear trabajo |
+| `PUT` | `/api/trabajos/{id}` | Actualizar trabajo o estado |
+| `DELETE` | `/api/trabajos/{id}` | Eliminar trabajo |
+| `GET` | `/api/isometricos` | Obtener isométricos publicados |
+| `GET` | `/api/isometricos/admin` | Obtener isométricos para administración |
+| `POST` | `/api/isometricos` | Crear isométrico y subir PDF |
+| `DELETE` | `/api/isometricos/{id}` | Eliminar isométrico |
+| `GET` | `/api/isometricos/{id}/pdf` | Descargar PDF |
 
-El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.
+El cuerpo de creación de administrador tiene el siguiente formato:
 
-La API de incidencias aún no está conectada: las acciones de añadir y eliminar incidencias modifican SQLite en el propio dispositivo. Los datos no se sincronizan entre dispositivos ni con el backend.
+```json
+{
+  "usuario": "usuario",
+  "password": "contraseña"
+}
+```
 
-El único estado de isométrico es `PUBLICADO`; la creación requiere el PDF y todos los isométricos quedan disponibles para asignación. El backend protege las rutas de administración para el rol `ADMINISTRADOR` y devuelve en `GET /api/isometricos` los isométricos publicados a los encargados.
+La respuesta debe contener el usuario y el rol `ADMINISTRADOR`.
+
+## Incidencias
+
+Las incidencias tienen persistencia local en cada dispositivo.
+
+- Android: SQLite privado de la aplicación.
+- Escritorio: `~/.navalworks/preferences.db`.
+
+Al crear o eliminar una incidencia, se actualiza inmediatamente la tabla local de incidencias. La información se conserva al cerrar y volver a abrir la aplicación.
+
+Las incidencias no tienen API propia en el backend. Por tanto:
+
+- Una incidencia creada en una tablet solo aparecerá en esa tablet.
+- Una incidencia creada en el escritorio solo aparecerá en ese ordenador.
+- Las incidencias no se sincronizan entre dispositivos.
+- Las incidencias no se conservan en el backend.
+
+Las incidencias predeterminadas se crean la primera vez que se abre el dashboard. A partir de ese momento, el contenido guardado localmente pasa a ser la fuente utilizada por la aplicación.
+
+## Otros datos locales
+
+Además de las incidencias, en SQLite se guardan:
+
+- Idioma seleccionado.
+- URL del servidor.
+- Usuario guardado.
+- Contraseña guardada.
+
+Los PDFs descargados se almacenan en:
+
+- Android: almacenamiento privado de la aplicación.
+- Escritorio: `~/.navalworks/isometricos`.
+
+En Android, los datos locales y los PDFs se eliminan al desinstalar la aplicación.
+
+## Visualización
+
+La interfaz está diseñada para adaptarse a distintos tamaños:
+
+- Móvil.
+- Tablet vertical.
+- Tablet horizontal.
+- Escritorio.
+
+Las vistas principales incluyen:
+
+- Trabajos.
+- Asignar nuevo trabajo.
+- Incidencias activas.
+- Operarios en buque.
+- Administrar operarios.
+- Gestión de isométricos.
+- Detalle y PDF de cada isométrico.
+
+## Estados de trabajo
+
+Los estados disponibles están definidos por el dominio de la aplicación y se muestran con colores propios:
+
+- Aceptado.
+- En proceso o estado equivalente enviado por el backend.
+- Revisión o terminado, según el valor recibido.
+
+El trabajo conectado al backend puede cambiar de estado desde su tarjeta.
 
 ## Pruebas
 
-```bash
-# Pruebas compartidas para escritorio
-./gradlew :shared:jvmTest
+Pruebas compartidas para escritorio:
 
-# Pruebas host de Android
+```bash
+./gradlew :shared:jvmTest
+```
+
+Pruebas host de Android:
+
+```bash
 ./gradlew :shared:testAndroidHostTest
 ```
+
+Compilar ambos módulos principales:
+
+```bash
+./gradlew :desktopApp:build :androidApp:assembleDebug
+```
+
+## Estado actual
+
+Implementado:
+
+- Inicio de sesión y cierre de sesión.
+- Acceso de administrador.
+- Operarios, trabajos e isométricos mediante backend.
+- Descarga y almacenamiento local de PDFs.
+- Persistencia local de incidencias.
+- Gestión local de idioma y configuración de servidor.
+- Interfaces responsive para Android y escritorio.
+
+Pendiente o limitado:
+
+- Sincronización de incidencias entre tablet, móvil y escritorio.
+- API compartida para incidencias.
+- Sincronización de la configuración de incidencias entre dispositivos.
+- Indicadores globales actualmente demostrativos o calculados parcialmente.
