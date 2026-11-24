@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,8 +33,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun TrabajosScreen(
     onTrabajoSeleccionado: (TrabajoItem?) -> Unit,
+    onTrabajosChanged: () -> Unit,
 ) {
     var trabajos by remember { mutableStateOf<List<TrabajoItem>>(emptyList()) }
+    var trabajosEnServidor by remember { mutableStateOf<Set<Pair<Long, Long>>>(emptySet()) }
     var selectedTrabajoId by remember { mutableStateOf<Long?>(null) }
     var isOfflineMode by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
@@ -45,6 +49,11 @@ fun TrabajosScreen(
     var trabajoParaAñadirOperarios by remember { mutableStateOf<TrabajoItem?>(null) }
     var isSavingOperarios by remember { mutableStateOf(false) }
     var addOperariosError by remember { mutableStateOf<String?>(null) }
+    var trabajoParaEliminar by remember { mutableStateOf<TrabajoItem?>(null) }
+    var isDeleteConfirmationVisible by remember { mutableStateOf(false) }
+    var isAdminLoginVisible by remember { mutableStateOf(false) }
+    var deletingTrabajoId by remember { mutableStateOf<Long?>(null) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
     val language = LocalUiLanguage.current
@@ -54,25 +63,15 @@ fun TrabajosScreen(
         errorMessage = null
         try {
             val trabajosDelServidor = fetchTrabajos()
+            trabajosEnServidor = trabajosDelServidor
+                .map { it.id to it.isometricoId }
+                .toSet()
             trabajos = trabajosDelServidor
             isOfflineMode = false
-            try {
-                val trabajosGuardados = loadOfflineTrabajos()
-                val isometricosDelServidor = trabajosDelServidor.map { it.isometricoId }.toSet()
-                trabajos = trabajosDelServidor + trabajosGuardados.filterNot {
-                    it.isometricoId in isometricosDelServidor
-                }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                errorMessage = exception.message ?: language.text(
-                    "No se pudieron leer los PDFs guardados en el dispositivo",
-                    "Non se puideron ler os PDFs gardados no dispositivo",
-                )
-            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
+            trabajosEnServidor = emptySet()
             try {
                 trabajos = loadOfflineTrabajos()
                 isOfflineMode = trabajos.isNotEmpty()
@@ -125,6 +124,7 @@ fun TrabajosScreen(
         }
         else -> TrabajosSection(
             listaTrabajos = trabajos,
+            trabajosEnServidor = trabajosEnServidor,
             isOfflineMode = isOfflineMode,
             bulkDownloadProgress = bulkDownloadProgress,
             bulkDownloadMessage = bulkDownloadMessage,
@@ -196,10 +196,10 @@ fun TrabajosScreen(
                 selectedTrabajoId = it.id
                 onTrabajoSeleccionado(it)
             },
-            estadoUpdateError = estadoUpdateError ?: errorMessage,
-            isUpdatingEstado = updatingTrabajoId != null,
+            estadoUpdateError = estadoUpdateError ?: deleteError ?: errorMessage,
+            isUpdatingEstado = updatingTrabajoId != null || deletingTrabajoId != null,
             updatingTrabajoId = updatingTrabajoId,
-            isAddingOperarios = isSavingOperarios,
+            isAddingOperarios = isSavingOperarios || deletingTrabajoId != null,
             addingOperariosTrabajoId = trabajoParaAñadirOperarios?.id,
             onAddOperarios = { trabajo ->
                 if (updatingTrabajoId == null && !isSavingOperarios) {
@@ -225,6 +225,7 @@ fun TrabajosScreen(
                                 )
                                 return@launch
                             }
+                            onTrabajosChanged()
 
                             try {
                                 trabajos = fetchTrabajos()
@@ -241,6 +242,14 @@ fun TrabajosScreen(
                             updatingTrabajoId = null
                         }
                     }
+                }
+            },
+            deletingTrabajoId = deletingTrabajoId,
+            onDeleteTrabajo = { trabajo ->
+                if (!isOfflineMode && updatingTrabajoId == null && !isSavingOperarios && deletingTrabajoId == null) {
+                    trabajoParaEliminar = trabajo
+                    isDeleteConfirmationVisible = true
+                    deleteError = null
                 }
             },
         )
@@ -283,6 +292,96 @@ fun TrabajosScreen(
                         } finally {
                             isSavingOperarios = false
                         }
+                    }
+                }
+            },
+        )
+    }
+
+    if (isDeleteConfirmationVisible) {
+        val trabajo = trabajoParaEliminar
+        if (trabajo != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    isDeleteConfirmationVisible = false
+                    trabajoParaEliminar = null
+                },
+                title = { Text(uiText("Eliminar trabajo", "Eliminar traballo")) },
+                text = {
+                    Text(
+                        uiText(
+                            "¿Quieres eliminar el trabajo del isométrico ${trabajo.codigoIsometrico}? Esta acción no se puede deshacer.",
+                            "Queres eliminar o traballo do isométrico ${trabajo.codigoIsometrico}? Esta acción non se pode desfacer.",
+                        ),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            isDeleteConfirmationVisible = false
+                            isAdminLoginVisible = true
+                        },
+                    ) {
+                        Text(uiText("Continuar", "Continuar"), color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            isDeleteConfirmationVisible = false
+                            trabajoParaEliminar = null
+                        },
+                    ) {
+                        Text(uiText("Cancelar", "Cancelar"))
+                    }
+                },
+            )
+        }
+    }
+
+    if (isAdminLoginVisible && trabajoParaEliminar != null) {
+        AdminLoginDialog(
+            onDismiss = {
+                isAdminLoginVisible = false
+                trabajoParaEliminar = null
+            },
+            onAuthenticated = {
+                val trabajo = trabajoParaEliminar ?: return@AdminLoginDialog
+                isAdminLoginVisible = false
+                deletingTrabajoId = trabajo.id
+                deleteError = null
+                scope.launch {
+                    try {
+                        deleteTrabajo(trabajo.id)
+                        trabajos = trabajos.filterNot { it.id == trabajo.id }
+                        trabajosEnServidor = trabajosEnServidor - (trabajo.id to trabajo.isometricoId)
+                        onTrabajosChanged()
+                        try {
+                            val trabajosActualizados = fetchTrabajos()
+                            trabajos = trabajosActualizados
+                            trabajosEnServidor = trabajosActualizados
+                                .map { it.id to it.isometricoId }
+                                .toSet()
+                        } catch (exception: CancellationException) {
+                            throw exception
+                        } catch (exception: Exception) {
+                            deleteError = language.text(
+                                "El trabajo se eliminó, pero no se pudo actualizar la lista: ",
+                                "Eliminouse o traballo, pero non se puido actualizar a lista: ",
+                            ) + (exception.message ?: language.text("error desconocido", "erro descoñecido"))
+                        }
+                        trabajoParaEliminar = null
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (exception: Exception) {
+                        deleteError = exception.message ?: language.text(
+                            "No se pudo eliminar el trabajo",
+                            "Non se puido eliminar o traballo",
+                        )
+                        trabajoParaEliminar = null
+                    } finally {
+                        logoutAdministrador()
+                        deletingTrabajoId = null
                     }
                 }
             },

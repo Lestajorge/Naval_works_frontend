@@ -22,7 +22,7 @@ Aplicación multiplataforma para la supervisión y gestión de trabajos en un en
 - Visualización del logotipo de NavalWorks en la sección **Operarios en buque**.
 - Diseño adaptable: navegación compacta por debajo de 840 dp, tarjetas apiladas en móvil y cuadrícula de bloques que ajusta sus columnas al ancho disponible. El dashboard tiene previews de 360×800 (móvil), 800×1280 (tablet vertical) y 1280×800 dp (tablet horizontal).
 
-> Los indicadores del panel y las incidencias son demostrativos. Las incidencias se crean y eliminan solo en memoria, por lo que no se conservan al cerrar la aplicación ni se sincronizan con el backend. Los trabajos y operarios sí utilizan los endpoints descritos más abajo.
+> Los indicadores del panel son demostrativos. Las incidencias se guardan localmente en el dispositivo y se conservan al cerrar la aplicación, pero todavía no se sincronizan con el backend. Los trabajos y operarios sí utilizan los endpoints descritos más abajo.
 
 ## Tecnologías
 
@@ -46,7 +46,7 @@ shared/
 
 La lógica compartida está en `shared/src/commonMain`; sus implementaciones específicas de plataforma están en `shared/src/androidMain` y `shared/src/jvmMain`.
 
-Las preferencias de aplicación y conexión se guardan en SQLite: Android utiliza su base de datos privada de la aplicación y escritorio utiliza `~/.navalworks/preferences.db`.
+Las preferencias de aplicación y conexión, junto con las incidencias, se guardan en SQLite: Android utiliza su base de datos privada de la aplicación y escritorio utiliza `~/.navalworks/preferences.db`.
 
 Los PDFs descargados se guardan en el almacenamiento privado de la aplicación en Android y en `~/.navalworks/isometricos` en escritorio. En Android se eliminan al desinstalar la aplicación.
 
@@ -92,7 +92,7 @@ La aplicación espera el backend Spring Security del proyecto Naval_Works. Las p
 
 El backend debe escuchar en el puerto `8080`. La aplicación de escritorio usa `localhost`; el emulador Android usa `10.0.2.2` para acceder al equipo anfitrión. En un dispositivo Android físico, configura `apiBaseUrl` en `shared/src/androidMain/kotlin/com/works/naval/Platform.android.kt` con la dirección IP del equipo en la red local. Para producción, utiliza HTTPS en lugar de HTTP.
 
-La API de incidencias aún no está conectada: las acciones de añadir y eliminar incidencias solo modifican la lista local de demostración.
+La API de incidencias aún no está conectada: las acciones de añadir y eliminar incidencias modifican SQLite en el propio dispositivo. Los datos no se sincronizan entre dispositivos ni con el backend.
 
 El único estado de isométrico es `PUBLICADO`; la creación requiere el PDF y todos los isométricos quedan disponibles para asignación. El backend protege las rutas de administración para el rol `ADMINISTRADOR` y devuelve en `GET /api/isometricos` los isométricos publicados a los encargados.
 

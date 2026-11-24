@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TrabajosSection(
     listaTrabajos: List<TrabajoItem>,
+    trabajosEnServidor: Set<Pair<Long, Long>>,
     isOfflineMode: Boolean,
     bulkDownloadProgress: Pair<Int, Int>?,
     bulkDownloadMessage: String?,
@@ -33,6 +34,8 @@ fun TrabajosSection(
     isAddingOperarios: Boolean,
     addingOperariosTrabajoId: Long?,
     onAddOperarios: (TrabajoItem) -> Unit,
+    deletingTrabajoId: Long?,
+    onDeleteTrabajo: (TrabajoItem) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
@@ -151,10 +154,13 @@ fun TrabajosSection(
                     isSaving = trabajo.id == updatingTrabajoId,
                     isAddingOperarios =
                         !isOfflineMode && isAddingOperarios && trabajo.id == addingOperariosTrabajoId,
+                    isDeleting = !isOfflineMode && trabajo.id == deletingTrabajoId,
+                    canDelete = !isOfflineMode && (trabajo.id to trabajo.isometricoId) in trabajosEnServidor,
                     onEstadoChange = { nuevoEstado ->
                         if (!isOfflineMode) onEstadoChange(trabajo.id, nuevoEstado)
                     },
                     onAddOperarios = { if (!isOfflineMode) onAddOperarios(trabajo) },
+                    onDelete = { if (!isOfflineMode) onDeleteTrabajo(trabajo) },
                 )
             }
         }

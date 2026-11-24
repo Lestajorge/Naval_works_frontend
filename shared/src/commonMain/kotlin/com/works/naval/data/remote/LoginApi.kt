@@ -34,6 +34,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
+class IsometricoYaAsignadoException : Exception()
+
+class IsometricoAsociadoATrabajoException : Exception()
+
 private var loginCredentials: BasicAuthCredentials? = null
 private var regularLoginCredentials: BasicAuthCredentials? = null
 
@@ -161,6 +165,9 @@ suspend fun createOperario(
         )
     }
 
+    if (response.status.value == 409) {
+        throw IsometricoYaAsignadoException()
+    }
     if (response.status.value !in 200..299) {
         val details = response.bodyAsText().take(500)
         error(
@@ -263,6 +270,14 @@ suspend fun createIsometrico(
     requireSuccessful(response, "crear el isométrico y subir su PDF")
 }
 
+suspend fun deleteIsometrico(isometricoId: Long) {
+    val response = httpClient.delete("$apiBaseUrl/api/isometricos/$isometricoId")
+    if (response.status.value == 409) {
+        throw IsometricoAsociadoATrabajoException()
+    }
+    requireSuccessful(response, "eliminar el isométrico $isometricoId")
+}
+
 suspend fun fetchBloques(): List<BloqueOption> =
     fetchJsonArray("/api/bloques").map { element ->
         val bloque = element.jsonObject
@@ -343,6 +358,11 @@ suspend fun addOperariosToTrabajo(trabajo: TrabajoItem, nuevosOperarioIds: Set<L
     updateTrabajo(
         trabajo.copy(operarioIds = (trabajo.operarioIds + nuevosOperarioIds).distinct()),
     )
+}
+
+suspend fun deleteTrabajo(trabajoId: Long) {
+    val response = httpClient.delete("$apiBaseUrl/api/trabajos/$trabajoId")
+    requireSuccessful(response, "eliminar el trabajo $trabajoId")
 }
 
 private suspend fun updateTrabajo(trabajo: TrabajoItem) {

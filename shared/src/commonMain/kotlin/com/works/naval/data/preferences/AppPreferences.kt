@@ -10,4 +10,8 @@ interface AppPreferences {
     suspend fun readServerConnectionSettings(): ServerConnectionSettings?
 
     suspend fun writeServerConnectionSettings(settings: ServerConnectionSettings)
+
+    suspend fun readIncidencias(): List<IncidenciaRecord>?
+
+    suspend fun writeIncidencias(incidencias: List<IncidenciaRecord>)
 }

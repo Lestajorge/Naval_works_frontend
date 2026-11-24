@@ -268,7 +268,10 @@ fun GestionOperariosScreen() {
                                 },
                                 enabled = !isSaving,
                             ) {
-                                Text(uiText("Dar de baja", "Dar de baixa"))
+                                Text(
+                                    uiText("Dar de baja", "Dar de baixa"),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
                             }
                         }
                     }

@@ -219,10 +219,18 @@ fun CrearTrabajoScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = uiText(
-                        "Operarios (${selectedOperarioIds.size} seleccionados)",
-                        "Operarios (${selectedOperarioIds.size} seleccionados)",
+                        "Operarios (${selectedOperarioIds.size} seleccionados, opcional)",
+                        "Operarios (${selectedOperarioIds.size} seleccionados, opcional)",
                     ),
                     style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = uiText(
+                        "Sin operarios, el trabajo quedará pendiente; al asignarlos, pasará a ejecución.",
+                        "Sen operarios, o traballo quedará pendente; ao asignalos, pasará a execución.",
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -285,6 +293,11 @@ fun CrearTrabajoScreen(
                                 onTrabajoCreado()
                             } catch (exception: CancellationException) {
                                 throw exception
+                            } catch (exception: IsometricoYaAsignadoException) {
+                                saveErrorMessage = language.text(
+                                    "El isométrico ya está asignado a un trabajo.",
+                                    "O isométrico xa está asignado a un traballo.",
+                                )
                             } catch (exception: Exception) {
                                 saveErrorMessage = exception.message
                                     ?: language.text("No se pudo crear el trabajo", "Non se puido crear o traballo")
@@ -293,7 +306,7 @@ fun CrearTrabajoScreen(
                             }
                         }
                     },
-                    enabled = !isSaving && selectedIsometrico != null && selectedOperarioIds.isNotEmpty(),
+                    enabled = !isSaving && selectedIsometrico != null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp),

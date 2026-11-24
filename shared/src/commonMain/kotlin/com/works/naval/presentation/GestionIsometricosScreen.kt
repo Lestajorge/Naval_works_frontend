@@ -61,6 +61,9 @@ fun GestionIsometricosScreen() {
     var isSaving by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    var isDeleting by remember { mutableStateOf(false) }
+    var isometricoToDelete by remember { mutableStateOf<IsometricoAdministrado?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var codigo by remember { mutableStateOf("") }
@@ -184,7 +187,7 @@ fun GestionIsometricosScreen() {
             )
             IconButton(
                 onClick = { refreshKey++ },
-                enabled = !isLoading && !isSaving,
+                enabled = !isLoading && !isSaving && !isDeleting,
             ) {
                 Icon(
                     Icons.Default.Refresh,
@@ -196,13 +199,14 @@ fun GestionIsometricosScreen() {
                     formError = null
                     showCreateDialog = true
                 },
-                enabled = !isSaving,
+                enabled = !isSaving && !isDeleting,
             ) {
                 Text(uiText("Nuevo isométrico", "Novo isométrico"))
             }
         }
 
         successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         when {
             isLoading -> Box(
@@ -270,6 +274,19 @@ fun GestionIsometricosScreen() {
                                     color = estadoColor(isometrico.estado),
                                     style = MaterialTheme.typography.labelLarge,
                                 )
+                                OutlinedButton(
+                                    onClick = {
+                                        isometricoToDelete = isometrico
+                                        deleteError = null
+                                        successMessage = null
+                                    },
+                                    enabled = !isSaving && !isDeleting,
+                                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error,
+                                    ),
+                                ) {
+                                    Text(uiText("Eliminar", "Eliminar"))
+                                }
                             }
                         }
                     }
@@ -323,6 +340,7 @@ fun GestionIsometricosScreen() {
                                     },
                                 )
                             }
+
                         }
                     }
                     OutlinedButton(
@@ -361,6 +379,71 @@ fun GestionIsometricosScreen() {
                 TextButton(
                     onClick = ::closeCreateDialog,
                     enabled = !isSaving,
+                ) {
+                    Text(uiText("Cancelar", "Cancelar"))
+                }
+            },
+        )
+    }
+
+    isometricoToDelete?.let { isometrico ->
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting) isometricoToDelete = null },
+            title = { Text(uiText("Eliminar isométrico", "Eliminar isométrico")) },
+            text = {
+                Text(
+                    uiText(
+                        "¿Eliminar el isométrico ${isometrico.codigo}? Esta acción borrará el registro del servidor.",
+                        "Eliminar o isométrico ${isometrico.codigo}? Esta acción borrará o rexistro do servidor.",
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = {
+                        isDeleting = true
+                        deleteError = null
+                        scope.launch {
+                            try {
+                                deleteIsometrico(isometrico.id)
+                                isometricos = isometricos.filterNot { it.id == isometrico.id }
+                                isometricoToDelete = null
+                                successMessage = language.text(
+                                    "Isométrico eliminado correctamente.",
+                                    "Isométrico eliminado correctamente.",
+                                )
+                            } catch (exception: CancellationException) {
+                                throw exception
+                            } catch (exception: IsometricoAsociadoATrabajoException) {
+                                deleteError = language.text(
+                                    "El isométrico está asociado a un trabajo; no se puede eliminar.",
+                                    "O isométrico está asociado a un traballo; non se pode eliminar.",
+                                )
+                                isometricoToDelete = null
+                            } catch (exception: Exception) {
+                                deleteError = exception.message ?: language.text(
+                                    "No se pudo eliminar el isométrico.",
+                                    "Non se puido eliminar o isométrico.",
+                                )
+                                isometricoToDelete = null
+                            } finally {
+                                isDeleting = false
+                            }
+                        }
+                    },
+                ) {
+                    Text(
+                        if (isDeleting) uiText("Eliminando...", "Eliminando...")
+                        else uiText("Eliminar", "Eliminar"),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isDeleting,
+                    onClick = { isometricoToDelete = null },
                 ) {
                     Text(uiText("Cancelar", "Cancelar"))
                 }

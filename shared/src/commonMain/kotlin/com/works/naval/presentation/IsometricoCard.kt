@@ -30,8 +30,11 @@ fun IsometricoCard(
     isUpdating: Boolean,
     isSaving: Boolean,
     isAddingOperarios: Boolean,
+    isDeleting: Boolean,
+    canDelete: Boolean,
     onEstadoChange: (EstadoTrabajo) -> Unit,
     onAddOperarios: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val colors = estadoColors(item.estado)
     var estadoMenuExpanded by remember { mutableStateOf(false) }
@@ -72,6 +75,21 @@ fun IsometricoCard(
                             Text(if (isAddingOperarios) "..." else uiText("Operarios", "Operarios"), maxLines = 1)
                         }
                     }
+                    if (canDelete) {
+                        OutlinedButton(
+                            onClick = onDelete,
+                            enabled = !isUpdating && !isAddingOperarios && !isDeleting,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
+                        ) {
+                            Text(
+                                if (isDeleting) uiText("Eliminando...", "Eliminando...")
+                                else uiText("Eliminar trabajo", "Eliminar traballo"),
+                            )
+                        }
+                    }
                 }
             } else {
                 Row(
@@ -107,6 +125,20 @@ fun IsometricoCard(
                                 else uiText("Añadir operarios", "Engadir operarios"),
                             )
                         }
+                        if (canDelete) {
+                            OutlinedButton(
+                                onClick = onDelete,
+                                enabled = !isUpdating && !isAddingOperarios && !isDeleting,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Text(
+                                    if (isDeleting) uiText("Eliminando...", "Eliminando...")
+                                    else uiText("Eliminar", "Eliminar"),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -122,8 +154,8 @@ private fun TrabajoCardDescription(
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = uiText(
-                "Isométrico: ${item.codigoIsometrico}",
-                "Isométrico: ${item.codigoIsometrico}",
+                "Trabajo: ${item.codigoIsometrico}",
+                "Traballo: ${item.codigoIsometrico}",
             ),
             style = MaterialTheme.typography.titleMedium,
             color = contentColor,

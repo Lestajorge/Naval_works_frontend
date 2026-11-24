@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,15 +35,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import navalworks_frontend.shared.generated.resources.Res
+import navalworks_frontend.shared.generated.resources.NavalWorks_Logo_Azul
+
+private val NavalWorksBlue = Color(0xFF134386)
 
 @Composable
 fun App(preferences: AppPreferences) {
-    MaterialTheme {
+    MaterialTheme(
+        colorScheme = lightColorScheme(
+            primary = NavalWorksBlue,
+            onPrimary = Color.White,
+        ),
+    ) {
         LoginScreen(preferences)
     }
 }
@@ -89,7 +103,9 @@ fun LoginScreen(preferences: AppPreferences) {
         }
     } else {
         Box(
-           modifier = Modifier.fillMaxSize(),
+           modifier = Modifier
+               .fillMaxSize()
+               .background(Color(0xFF7D8AA8)),
            contentAlignment = Alignment.Center,
         ) {
            Column(
@@ -100,6 +116,15 @@ fun LoginScreen(preferences: AppPreferences) {
                horizontalAlignment = Alignment.CenterHorizontally,
                verticalArrangement = Arrangement.Center,
            ) {
+               Image(
+                   painter = painterResource(Res.drawable.NavalWorks_Logo_Azul),
+                   contentDescription = "Logo de NavalWorks",
+                   modifier = Modifier
+                       .fillMaxWidth()
+                       .height(120.dp)
+                       .padding(bottom = 20.dp),
+                   contentScale = ContentScale.Fit,
+               )
                OutlinedTextField(
                    value = user,
                    onValueChange = {

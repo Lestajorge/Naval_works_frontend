@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.resources.painterResource
 import navalworks_frontend.shared.generated.resources.Res
-import navalworks_frontend.shared.generated.resources.LogoNavalWorks
+import navalworks_frontend.shared.generated.resources.NavalWorks_Logo_Azul
 
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
@@ -70,21 +70,36 @@ fun DashboardPrincipal(
     var administrator by remember { mutableStateOf<String?>(null) }
     var showAddIncidenciaDialog by remember { mutableStateOf(false) }
     var trabajoSeleccionado by remember { mutableStateOf<TrabajoItem?>(null) }
-    var incidencias by remember {
-        mutableStateOf(
-            listOf(
-                IncidenciaItem("", "Retraso en la soldadura del bloque B322"),
-                IncidenciaItem("", "Falta material para la instalación eléctrica"),
-                IncidenciaItem("", "Revisión pendiente del isométrico 2"),
-                IncidenciaItem("", "Incidencia de seguridad en el taller"),
-            ),
-        )
+    var trabajos by remember { mutableStateOf<List<TrabajoItem>>(emptyList()) }
+    var trabajosRefreshKey by remember { mutableStateOf(0) }
+    var incidencias by remember(preferences) { mutableStateOf<List<IncidenciaItem>>(emptyList()) }
+    val avanceGlobal = if (trabajos.isEmpty()) {
+        0
+    } else {
+        trabajos.count { it.estado == EstadoTrabajo.ACEPTADO } * 100 / trabajos.size
     }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(trabajosRefreshKey) {
+        try {
+            trabajos = fetchTrabajos()
+        } catch (_: Exception) {
+            // Conserva el ultimo dato disponible si no se puede actualizar.
+        }
+    }
 
     LaunchedEffect(preferences) {
         try {
             selectedLanguage = preferences.readUiLanguage() ?: UiLanguage.SPANISH
+            val storedIncidencias = preferences.readIncidencias()
+            if (storedIncidencias == null) {
+                incidencias = defaultIncidencias
+                preferences.writeIncidencias(incidencias.toRecords())
+            } else {
+                incidencias = storedIncidencias.map {
+                    IncidenciaItem(it.nombre, it.descripcion)
+                }
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
@@ -104,6 +119,20 @@ fun DashboardPrincipal(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
+                preferenceError = PreferenceError.SAVE
+            }
+        }
+    }
+
+    fun updateIncidencias(nextIncidencias: List<IncidenciaItem>) {
+        incidencias = nextIncidencias
+        scope.launch {
+            try {
+                preferences.writeIncidencias(nextIncidencias.toRecords())
+                preferenceError = null
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
                 preferenceError = PreferenceError.SAVE
             }
         }
@@ -243,12 +272,12 @@ fun DashboardPrincipal(
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                                 Text(
-                                    uiText("Avance global: 68%", "Progreso global: 68%"),
+                                    uiText("Avance global: $avanceGlobal%", "Progreso global: $avanceGlobal%"),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
                             LinearProgressIndicator(
-                                progress = { 0.68f },
+                                progress = { avanceGlobal / 100f },
                                 modifier = Modifier.weight(1f),
                                 color = NavalBlue,
                             )
@@ -380,9 +409,10 @@ fun DashboardPrincipal(
                                 administrator = administrator,
                                 incidencias = incidencias,
                                 onTrabajoSeleccionado = { trabajoSeleccionado = it },
+                                onTrabajosChanged = { trabajosRefreshKey++ },
                                 onSectionSelected = { selectedSection = it },
                                 onClearTrabajo = { trabajoSeleccionado = null },
-                                onIncidenciasChanged = { incidencias = it },
+                                onIncidenciasChanged = ::updateIncidencias,
                                 onBlockSelected = { selectedBlock = it },
                                 onGenerateReport = onGenerateReport,
                             )
@@ -523,9 +553,12 @@ fun DashboardPrincipal(
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(uiText("ESTADO DE LA F-110", "ESTADO DA F-110"), style = MaterialTheme.typography.labelSmall)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(uiText("Avance global: 68%", "Progreso global: 68%"), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        uiText("Avance global: $avanceGlobal%", "Progreso global: $avanceGlobal%"),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     LinearProgressIndicator(
-                        progress = { 0.68f },
+                        progress = { avanceGlobal / 100f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
@@ -655,9 +688,10 @@ fun DashboardPrincipal(
                 administrator = administrator,
                 incidencias = incidencias,
                 onTrabajoSeleccionado = { trabajoSeleccionado = it },
+                onTrabajosChanged = { trabajosRefreshKey++ },
                 onSectionSelected = { selectedSection = it },
                 onClearTrabajo = { trabajoSeleccionado = null },
-                onIncidenciasChanged = { incidencias = it },
+                onIncidenciasChanged = ::updateIncidencias,
                 onBlockSelected = { selectedBlock = it },
                 onGenerateReport = onGenerateReport,
             )
@@ -668,7 +702,7 @@ fun DashboardPrincipal(
             AddIncidenciaDialog(
                 onDismiss = { showAddIncidenciaDialog = false },
                 onAdd = { nombre, descripcion ->
-                    incidencias = incidencias + IncidenciaItem(nombre, descripcion)
+                    updateIncidencias(incidencias + IncidenciaItem(nombre, descripcion))
                     showAddIncidenciaDialog = false
                 },
             )
@@ -715,8 +749,8 @@ fun DashboardPrincipal(
                                 "Non se puideron cargar as preferencias gardadas.",
                             )
                             PreferenceError.SAVE -> uiText(
-                                "No se pudo guardar el idioma seleccionado.",
-                                "Non se puido gardar o idioma seleccionado.",
+                                "No se pudieron guardar los datos locales.",
+                                "Non se puideron gardar os datos locais.",
                             )
                         },
                     )
@@ -739,6 +773,7 @@ private fun DashboardSectionContent(
     administrator: String?,
     incidencias: List<IncidenciaItem>,
     onTrabajoSeleccionado: (TrabajoItem?) -> Unit,
+    onTrabajosChanged: () -> Unit,
     onSectionSelected: (String) -> Unit,
     onClearTrabajo: () -> Unit,
     onIncidenciasChanged: (List<IncidenciaItem>) -> Unit,
@@ -748,11 +783,13 @@ private fun DashboardSectionContent(
     when (selectedSection) {
         "Trabajos" -> TrabajosScreen(
             onTrabajoSeleccionado = onTrabajoSeleccionado,
+            onTrabajosChanged = onTrabajosChanged,
         )
         "Asignar trabajo" -> CrearTrabajoScreen(
             onTrabajoCreado = {
                 onSectionSelected("Trabajos")
                 onClearTrabajo()
+                onTrabajosChanged()
             },
             onCancelar = {
                 onSectionSelected("Trabajos")
@@ -856,6 +893,21 @@ private enum class PreferenceError {
     SAVE,
 }
 
+private val defaultIncidencias = listOf(
+    IncidenciaItem("", "Retraso en la soldadura del bloque B322"),
+    IncidenciaItem("", "Falta material para la instalación eléctrica"),
+    IncidenciaItem("", "Revisión pendiente del isométrico 2"),
+    IncidenciaItem("", "Incidencia de seguridad en el taller"),
+)
+
+private fun List<IncidenciaItem>.toRecords(): List<IncidenciaRecord> =
+    map { incidencia ->
+        IncidenciaRecord(
+            nombre = incidencia.nombre,
+            descripcion = incidencia.descripcion,
+        )
+    }
+
 private class PreviewAppPreferences : AppPreferences {
     override suspend fun readUiLanguage(): UiLanguage = UiLanguage.SPANISH
 
@@ -864,6 +916,10 @@ private class PreviewAppPreferences : AppPreferences {
     override suspend fun readServerConnectionSettings(): ServerConnectionSettings? = null
 
     override suspend fun writeServerConnectionSettings(settings: ServerConnectionSettings) = Unit
+
+    override suspend fun readIncidencias(): List<IncidenciaRecord>? = null
+
+    override suspend fun writeIncidencias(incidencias: List<IncidenciaRecord>) = Unit
 }
 
 @Composable
@@ -1082,8 +1138,8 @@ private fun ResumenBloquesScreen(
 @Composable
 private fun LogoNavalWorksImage() {
     Image(
-        painter = painterResource(Res.drawable.LogoNavalWorks),
-        contentDescription = uiText("Logotipo de NavalWorks", "Logotipo de NavalWorks"),
+        painter = painterResource(Res.drawable.NavalWorks_Logo_Azul),
+        contentDescription = uiText("Logotipo de NavalWorks con barco", "Logotipo de NavalWorks con barco"),
         modifier = Modifier
             .fillMaxSize(),
         contentScale = ContentScale.Fit,

@@ -108,12 +108,86 @@ class JvmAppPreferences(
         }
     }
 
+    override suspend fun readIncidencias(): List<IncidenciaRecord>? =
+        withContext(Dispatchers.IO) {
+            withConnection { connection ->
+                val initialized =
+                    connection.prepareStatement(
+                        "SELECT value FROM preferences WHERE key = ?",
+                    ).use { statement ->
+                        statement.setString(1, INCIDENCIAS_INITIALIZED_KEY)
+                        statement.executeQuery().use { result ->
+                            result.next() && result.getString("value") == "true"
+                        }
+                    }
+                if (!initialized) {
+                    null
+                } else {
+                    val incidencias = mutableListOf<IncidenciaRecord>()
+                    connection.createStatement().use { statement ->
+                        statement.executeQuery(
+                            "SELECT nombre, descripcion FROM incidencias ORDER BY id",
+                        ).use { result ->
+                            while (result.next()) {
+                                incidencias += IncidenciaRecord(
+                                    nombre = result.getString("nombre").orEmpty(),
+                                    descripcion = result.getString("descripcion").orEmpty(),
+                                )
+                            }
+                        }
+                    }
+                    incidencias
+                }
+            }
+        }
+
+    override suspend fun writeIncidencias(incidencias: List<IncidenciaRecord>) {
+        withContext(Dispatchers.IO) {
+            withConnection { connection ->
+                connection.autoCommit = false
+                try {
+                    connection.createStatement().use { statement ->
+                        statement.executeUpdate("DELETE FROM incidencias")
+                    }
+                    connection.prepareStatement(
+                        "INSERT INTO incidencias (nombre, descripcion) VALUES (?, ?)",
+                    ).use { statement ->
+                        incidencias.forEach { incidencia ->
+                            statement.setString(1, incidencia.nombre)
+                            statement.setString(2, incidencia.descripcion)
+                            statement.addBatch()
+                        }
+                        statement.executeBatch()
+                    }
+                    connection.prepareStatement(
+                        """
+                        INSERT INTO preferences (key, value) VALUES (?, 'true')
+                        ON CONFLICT(key) DO UPDATE SET value = 'true'
+                        """.trimIndent(),
+                    ).use { statement ->
+                        statement.setString(1, INCIDENCIAS_INITIALIZED_KEY)
+                        statement.executeUpdate()
+                    }
+                    connection.commit()
+                } catch (exception: Exception) {
+                    connection.rollback()
+                    throw exception
+                } finally {
+                    connection.autoCommit = true
+                }
+            }
+        }
+    }
+
     private fun <T> withConnection(block: (Connection) -> T): T {
         Files.createDirectories(databaseFile.toAbsolutePath().parent)
         return DriverManager.getConnection("jdbc:sqlite:$databaseFile").use { connection ->
             connection.createStatement().use { statement ->
                 statement.execute(
                     "CREATE TABLE IF NOT EXISTS preferences (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)",
+                )
+                statement.execute(
+                    "CREATE TABLE IF NOT EXISTS incidencias (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, descripcion TEXT NOT NULL)",
                 )
             }
             block(connection)
@@ -122,5 +196,6 @@ class JvmAppPreferences(
 
     private companion object {
         const val UI_LANGUAGE_KEY = "ui_language"
+        const val INCIDENCIAS_INITIALIZED_KEY = "incidencias_initialized"
     }
 }
