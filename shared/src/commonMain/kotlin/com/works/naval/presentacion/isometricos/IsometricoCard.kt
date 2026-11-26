@@ -1,4 +1,8 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.isometricos
+
+import com.works.naval.presentacion.operarios.OperariosAsignadosPanel
+import com.works.naval.presentacion.trabajos.EstadoColorWork
+import com.works.naval.presentacion.trabajos.estadoColors
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*

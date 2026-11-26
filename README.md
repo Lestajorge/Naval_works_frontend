@@ -42,14 +42,24 @@ desktopApp/
 shared/
   src/
     commonMain/
-      Core compartido, modelos, interfaz Compose y servicios
+      core/             Utilidades comunes y localización
+      data/             Acceso al servidor y persistencia de preferencias
+      domain/           Modelos y estados del negocio
+      platform/         Contratos para capacidades específicas de plataforma
+      presentacion/
+        app/            Aplicación y panel principal
+        configuracion/  Diálogos de acceso y conexión
+        incidencias/    Pantallas y diálogos de incidencias
+        isometricos/    Administración, tarjetas y visor PDF
+        operarios/      Gestión y asignación de operarios
+        trabajos/       Lista y creación de trabajos
     androidMain/
-      Implementaciones específicas de Android
+      Implementaciones Android de preferencias y capacidades de plataforma
     jvmMain/
-      Implementaciones específicas de escritorio
+      Implementaciones JVM de preferencias y capacidades de plataforma
 ```
 
-La interfaz y la mayor parte de la lógica residen en el módulo `shared`.
+La interfaz y la mayor parte de la lógica residen en el módulo `shared`. Cada pantalla y diálogo se agrupa bajo `presentacion` por el área funcional a la que pertenece; las demás carpetas representan capas técnicas de la aplicación.
 
 Las implementaciones específicas se encuentran en:
 

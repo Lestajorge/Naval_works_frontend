@@ -1,4 +1,8 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.trabajos
+
+import com.works.naval.presentacion.configuracion.AdminLoginDialog
+import com.works.naval.presentacion.isometricos.IsometricoDetalleVisor
+import com.works.naval.presentacion.operarios.AddOperariosDialog
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*
@@ -207,9 +211,17 @@ fun TrabajosScreen(
                     addOperariosError = null
                 }
             },
-            onEstadoChange = { id, nuevoEstado ->
+            onEstadoChange = onEstadoChange@{ id, nuevoEstado ->
                 val trabajo = trabajos.firstOrNull { it.id == id }
                 if (trabajo != null && trabajo.estado != nuevoEstado && updatingTrabajoId == null) {
+                    if (nuevoEstado == EstadoTrabajo.PENDIENTE && trabajo.operarioIds.isNotEmpty()) {
+                        estadoUpdateError = language.text(
+                            "No se puede cambiar el trabajo a pendiente porque tiene operarios asignados.",
+                            "Non se pode cambiar o traballo a pendente porque ten operarios asignados.",
+                        )
+                        return@onEstadoChange
+                    }
+
                     updatingTrabajoId = id
                     estadoUpdateError = null
                     scope.launch {

@@ -1,4 +1,6 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.app
+
+import com.works.naval.presentacion.configuracion.ConnectionSettingsDialog
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*
@@ -179,7 +181,7 @@ fun LoginScreen(preferences: AppPreferences) {
                        message = null
                        scope.launch {
                            try {
-                               loggedIn = login(user, password)
+                               loggedIn = login(user, password) != null
                                if (!loggedIn) message = "Usuario incorrecto"
                             } catch (exception: CancellationException) {
                                 throw exception

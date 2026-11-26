@@ -1,4 +1,4 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.isometricos
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*

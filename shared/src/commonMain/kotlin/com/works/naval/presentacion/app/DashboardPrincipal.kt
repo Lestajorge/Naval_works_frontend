@@ -1,4 +1,15 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.app
+
+import com.works.naval.presentacion.configuracion.AdminLoginDialog
+import com.works.naval.presentacion.incidencias.AddIncidenciaDialog
+import com.works.naval.presentacion.incidencias.IncidenciaItem
+import com.works.naval.presentacion.incidencias.IncidenciasScreen
+import com.works.naval.presentacion.isometricos.GestionIsometricosScreen
+import com.works.naval.presentacion.operarios.GestionOperariosScreen
+import com.works.naval.presentacion.operarios.OperariosAsignadosPanel
+import com.works.naval.presentacion.trabajos.CrearTrabajoScreen
+import com.works.naval.presentacion.trabajos.estadoColors
+import com.works.naval.presentacion.trabajos.TrabajosScreen
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*

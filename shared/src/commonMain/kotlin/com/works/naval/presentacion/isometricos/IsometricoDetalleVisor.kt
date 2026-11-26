@@ -1,4 +1,6 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.isometricos
+
+import com.works.naval.presentacion.trabajos.EstadoColorWork
 
 import com.works.naval.core.localization.*
 import com.works.naval.data.preferences.*
@@ -144,30 +146,6 @@ fun IsometricoDetalleVisor(
                         else -> uiText("Descargar para usar sin conexión", "Descargar para usar sen conexión")
                     },
                 )
-            }
-            if (hasOfflineCopy) {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                deleteOfflineIsometricoPdf(item.isometricoId)
-                                hasOfflineCopy = false
-                                isUsingOfflineCopy = false
-                                storageMessage = null
-                            } catch (exception: CancellationException) {
-                                throw exception
-                            } catch (exception: Exception) {
-                                storageMessage = exception.message ?: language.text(
-                                    "No se pudo eliminar la copia local",
-                                    "Non se puido eliminar a copia local",
-                                )
-                            }
-                        }
-                    },
-                    enabled = !isSavingOfflineCopy,
-                ) {
-                    Text(uiText("Eliminar copia", "Eliminar copia"))
-                }
             }
         }
         if (isUsingOfflineCopy) {

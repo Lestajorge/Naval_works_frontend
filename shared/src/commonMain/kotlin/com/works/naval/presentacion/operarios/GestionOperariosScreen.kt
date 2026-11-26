@@ -1,4 +1,4 @@
-package com.works.naval.presentation
+package com.works.naval.presentacion.operarios
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -92,8 +92,8 @@ fun GestionOperariosScreen() {
     fun saveOperario() {
         val normalizedNombre = nombre.trim()
         val normalizedApellidos = apellidos.trim()
-        val isCreatingEncargado =
-            editingOperario == null && especialista.equals("Encargado", ignoreCase = true)
+        val isCreatingAccount = editingOperario == null &&
+            especialista.equals("Encargado", ignoreCase = true)
         if (normalizedNombre.isBlank() || normalizedApellidos.isBlank() || especialista.isBlank()) {
             formError = language.text(
                 "Completa el nombre, los apellidos y la especialidad.",
@@ -101,10 +101,10 @@ fun GestionOperariosScreen() {
             )
             return
         }
-        if (isCreatingEncargado && (usuario.isBlank() || password.isBlank())) {
+        if (isCreatingAccount && (usuario.isBlank() || password.isBlank())) {
             formError = language.text(
-                "Introduce el nombre de usuario y la contraseña del encargado.",
-                "Introduce o nome de usuario e o contrasinal do encargado.",
+                "Introduce el nombre de usuario y la contraseña de la cuenta.",
+                "Introduce o nome de usuario e o contrasinal da conta.",
             )
             return
         }
@@ -120,12 +120,13 @@ fun GestionOperariosScreen() {
                         nombre = normalizedNombre,
                         apellidos = normalizedApellidos,
                         especialista = especialista,
-                        usuario = usuario.trim().takeIf { isCreatingEncargado },
-                        password = password.takeIf { isCreatingEncargado },
+                        administrador = false,
+                        usuario = usuario.trim().takeIf { isCreatingAccount },
+                        password = password.takeIf { isCreatingAccount },
                     )
                     successMessage = language.text(
-                        "Operario registrado correctamente.",
-                        "Operario rexistrado correctamente.",
+                        "Registro creado correctamente.",
+                        "Rexistro creado correctamente.",
                     )
                 } else {
                     updateOperario(
@@ -332,7 +333,7 @@ fun GestionOperariosScreen() {
                             value = usuario,
                             onValueChange = { usuario = it; formError = null },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text(uiText("Nombre de usuario", "Nome de usuario")) },
+                            label = { Text(uiText("Usuario de la cuenta", "Usuario da conta")) },
                             singleLine = true,
                             enabled = !isSaving,
                         )

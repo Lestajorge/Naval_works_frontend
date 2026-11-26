@@ -41,6 +41,11 @@ class IsometricoAsociadoATrabajoException : Exception()
 private var loginCredentials: BasicAuthCredentials? = null
 private var regularLoginCredentials: BasicAuthCredentials? = null
 
+data class AuthenticatedUser(
+    val usuario: String,
+    val rol: String,
+)
+
 private val httpClient = HttpClient {
     install(Auth) {
         basic {
@@ -49,54 +54,39 @@ private val httpClient = HttpClient {
         }
     }
 }
-private val adminAuthHttpClient = HttpClient()
+private val authHttpClient = HttpClient()
 
-suspend fun login(usuario: String, password: String): Boolean {
+suspend fun login(usuario: String, password: String): AuthenticatedUser? {
+    val authenticatedUser = try {
+        authenticate(usuario, password)
+    } catch (exception: Exception) {
+        logoutSession()
+        throw exception
+    }
+    if (authenticatedUser == null) {
+        logoutSession()
+        return null
+    }
     val credentials = BasicAuthCredentials(usuario, password)
     regularLoginCredentials = credentials
     loginCredentials = credentials
-    val response = try {
-        httpClient.get("$apiBaseUrl/api/bloques")
-    } catch (exception: Exception) {
-        loginCredentials = null
-        regularLoginCredentials = null
-        throw exception
-    }
-
-    if (response.status.value != 200) {
-        val status = response.status.value
-        val details = response.bodyAsText().take(500)
-        return try {
-            val administrator = loginAdministrador(usuario, password)
-            if (administrator != null) {
-                true
-            } else if (status == 401 || status == 403) {
-                loginCredentials = null
-                regularLoginCredentials = null
-                false
-            } else {
-                loginCredentials = null
-                regularLoginCredentials = null
-                error(
-                    "El servidor respondió $status al comprobar las credenciales" +
-                        if (details.isBlank()) "" else ": $details",
-                )
-            }
-        } catch (exception: Exception) {
-            loginCredentials = null
-            regularLoginCredentials = null
-            throw exception
-        }
-    }
-    return true
+    return authenticatedUser
 }
 
 suspend fun loginAdministrador(usuario: String, password: String): String? {
+    val authenticatedUser = authenticate(usuario, password) ?: return null
+    if (!authenticatedUser.rol.equals("ADMINISTRADOR", ignoreCase = true)) return null
+
+    loginCredentials = BasicAuthCredentials(usuario, password)
+    return authenticatedUser.usuario
+}
+
+private suspend fun authenticate(usuario: String, password: String): AuthenticatedUser? {
     val requestBody = buildJsonObject {
         put("usuario", usuario)
         put("password", password)
     }
-    val response = adminAuthHttpClient.post("$apiBaseUrl/api/auth/admin") {
+    val response = authHttpClient.post("$apiBaseUrl/api/auth/login") {
         contentType(ContentType.Application.Json)
         setBody(requestBody.toString())
     }
@@ -105,17 +95,16 @@ suspend fun loginAdministrador(usuario: String, password: String): String? {
     if (response.status.value != 200) {
         val details = response.bodyAsText().take(500)
         error(
-            "El servidor respondió ${response.status.value} al validar el administrador" +
+            "El servidor respondió ${response.status.value} al validar las credenciales" +
                 if (details.isBlank()) "" else ": $details"
         )
     }
 
-    val administrator = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-    if (administrator.requiredString("rol") != "ADMINISTRADOR") {
-        error("El servidor no confirmó el rol de administrador")
-    }
-    loginCredentials = BasicAuthCredentials(usuario, password)
-    return administrator.requiredString("usuario")
+    val user = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+    return AuthenticatedUser(
+        usuario = user.requiredString("usuario"),
+        rol = user.requiredString("rol"),
+    )
 }
 
 fun logoutAdministrador() {
@@ -142,12 +131,17 @@ suspend fun createOperario(
     nombre: String,
     apellidos: String,
     especialista: String,
+    administrador: Boolean = false,
     usuario: String? = null,
     password: String? = null,
 ) {
-    val isEncargado = especialista.equals("Encargado", ignoreCase = true)
-    require(!isEncargado || (!usuario.isNullOrBlank() && !password.isNullOrBlank())) {
-        "El encargado requiere nombre de usuario y contraseña"
+    val hasUsuario = !usuario.isNullOrBlank()
+    val hasPassword = !password.isNullOrBlank()
+    require(hasUsuario == hasPassword) {
+        "El usuario y la contraseña deben proporcionarse juntos"
+    }
+    require(!administrador || hasUsuario) {
+        "El administrador requiere nombre de usuario y contraseña"
     }
     val response = httpClient.post("$apiBaseUrl/api/operarios") {
         contentType(ContentType.Application.Json)
@@ -156,9 +150,9 @@ suspend fun createOperario(
                 put("nombre", nombre)
                 put("apellidos", apellidos)
                 put("especialista", especialista.trim().uppercase())
-                put("administrador", 0)
-                if (isEncargado) {
-                    put("usuario", usuario.orEmpty())
+                put("administrador", if (administrador) 1 else 0)
+                if (hasUsuario) {
+                    put("usuario", usuario.trim())
                     put("password", password.orEmpty())
                 }
             }.toString(),
@@ -193,6 +187,12 @@ suspend fun updateOperario(id: Long, nombre: String, apellidos: String, especial
 }
 
 suspend fun deleteOperario(id: Long) {
+    fetchTrabajos()
+        .filter { id in it.operarioIds }
+        .forEach { trabajo ->
+            updateTrabajo(trabajo.copy(operarioIds = trabajo.operarioIds.filterNot { it == id }))
+        }
+
     val response = httpClient.delete("$apiBaseUrl/api/operarios/$id")
     if (response.status.value !in 200..299) {
         val details = response.bodyAsText().take(500)

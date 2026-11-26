@@ -23,8 +23,6 @@ expect suspend fun listOfflineIsometricoIds(): List<Long>
 
 expect suspend fun readOfflineIsometricoMetadata(isometricoId: Long): String?
 
-expect suspend fun deleteOfflineIsometricoPdf(isometricoId: Long)
-
 suspend fun saveOfflineIsometricoPdf(item: TrabajoItem, pdfBytes: ByteArray) {
     require(item.isometricoId > 0) { "El identificador del isométrico no es válido" }
     require(pdfBytes.isNotEmpty()) { "El PDF está vacío" }

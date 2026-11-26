@@ -2,7 +2,7 @@ package com.works.naval
 
 import com.works.naval.data.preferences.AndroidAppPreferences
 import com.works.naval.platform.configureOfflineIsometricoPdfStorage
-import com.works.naval.presentation.App
+import com.works.naval.presentacion.app.App
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent

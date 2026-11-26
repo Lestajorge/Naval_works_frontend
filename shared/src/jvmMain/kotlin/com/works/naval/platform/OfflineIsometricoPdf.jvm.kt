@@ -56,10 +56,3 @@ actual suspend fun listOfflineIsometricoIds(): List<Long> = withContext(Dispatch
 actual suspend fun readOfflineIsometricoMetadata(isometricoId: Long): String? = withContext(Dispatchers.IO) {
     offlinePdfDirectory().resolve("$isometricoId.json").toFile().takeIf(File::isFile)?.readText()
 }
-
-actual suspend fun deleteOfflineIsometricoPdf(isometricoId: Long) {
-    withContext(Dispatchers.IO) {
-        Files.deleteIfExists(offlinePdfDirectory().resolve("$isometricoId.pdf"))
-        Files.deleteIfExists(offlinePdfDirectory().resolve("$isometricoId.json"))
-    }
-}
