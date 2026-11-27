@@ -72,6 +72,7 @@ Las implementaciones específicas se encuentran en:
 - Android Studio para ejecutar la versión Android.
 - Backend accesible en el puerto `8080`.
 - Para Android físico, el dispositivo debe poder alcanzar la dirección de red del servidor.
+- Para ejecutar la versión de escritorio en Windows, JDK 21 y Windows 10 o posterior.
 
 ## Ejecutar el proyecto
 
@@ -83,11 +84,25 @@ Desde la raíz del proyecto:
 ./gradlew :desktopApp:run
 ```
 
+En Windows, abre PowerShell en la carpeta del proyecto y ejecuta:
+
+```powershell
+.\gradlew.bat :desktopApp:run
+```
+
 También puede generarse una distribución nativa:
 
 ```bash
 ./gradlew :desktopApp:packageDistributionForCurrentOS
 ```
+
+En Windows, ese comando genera un instalador MSI. También puedes generarlo directamente con:
+
+```powershell
+.\gradlew.bat :desktopApp:packageMsi
+```
+
+El instalador se guarda bajo `desktopApp\build\compose\binaries\main\msi\`. Genera el instalador en Windows; una distribución creada en macOS es para macOS y no se puede instalar en Windows.
 
 ### Android
 
@@ -113,6 +128,8 @@ Las URL predeterminadas son:
 - Emulador Android: `http://10.0.2.2:8080`
 
 La URL, el usuario y la contraseña pueden cambiarse desde el panel de configuración de la aplicación.
+
+En escritorio, `localhost` significa el mismo ordenador donde se ejecuta la aplicación. Si el backend está en otro equipo, configura en la aplicación su dirección de red, por ejemplo `http://192.168.1.50:8080`, y asegúrate de que Windows y el backend pueden comunicarse por el puerto `8080`.
 
 Para un dispositivo Android físico, la URL predeterminada puede configurarse en:
 
